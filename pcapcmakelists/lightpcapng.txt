@@ -1,0 +1,32 @@
+cmake_minimum_required (VERSION 3.18.4)
+project (light_pcapng C)
+
+add_library (light_pcapng
+	LightPcapNg/src/light_io.c
+	LightPcapNg/src/light_pcapng.c
+	LightPcapNg/src/light_pcapng_cont.c
+	LightPcapNg/src/light_platform.c
+	LightPcapNg/src/light_manipulate.c
+	LightPcapNg/src/light_internal.c
+	LightPcapNg/src/light_alloc.c
+	LightPcapNg/src/light_advanced.c
+	LightPcapNg/src/light_option.c
+	LightPcapNg/src/light_pcapng_ext.c
+	LightPcapNg/include/light_debug.h
+	LightPcapNg/include/light_internal.h
+	LightPcapNg/include/light_pcapng_ext.h
+	LightPcapNg/include/light_pcapng.h
+	LightPcapNg/include/light_platform.h
+	LightPcapNg/include/light_special.h
+	LightPcapNg/include/light_types.h
+	LightPcapNg/include/light_util.h
+ )
+
+
+target_compile_definitions(light_pcapng
+	PUBLIC -DUNIVERSAL
+)
+
+target_include_directories(light_pcapng PUBLIC
+	${PROJECT_SOURCE_DIR}/LightPcapNg/include/
+)
