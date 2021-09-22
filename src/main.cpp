@@ -8,7 +8,7 @@ int main(int argc, char* argv[])
 
     Program program("deserter", argc, argv);
 
-    std::cout << program.GetArgs().targetIP.toString() << std::endl;
+    std::cout << program.GetArgs().interfaceAddress.toString() << std::endl;
 
     return 0;
 }

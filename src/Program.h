@@ -3,6 +3,7 @@
 #include <string>
 
 #include <IpAddress.h>
+#include <PcapLiveDeviceList.h>
 
 #include <argparse.hpp>
 
@@ -24,10 +25,13 @@ public:
 
 private:
     void ParseArguments(int argc, char* argv[]);
+    void InitCaptureInterface();
 
 private:
     const std::string name;
     argparse::ArgumentParser parser;
     Arguments args;
+
+    pcpp::PcapLiveDevice* dev;
 };
 

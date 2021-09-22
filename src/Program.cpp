@@ -6,6 +6,7 @@ Program::Program(const std::string& name, int argc, char* argv[])
     parser(name)
 {
     ParseArguments(argc, argv);
+    InitCaptureInterface();
 }
 
 void Program::ParseArguments(int argc, char* argv[])
@@ -52,5 +53,34 @@ void Program::ParseArguments(int argc, char* argv[])
         exit(0);
     }
 
-    
+}
+
+void Program::InitCaptureInterface()
+{
+    if (args.interfaceAddress.isValid())
+    {
+        dev = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByIp(args.interfaceAddress);
+        if (dev)
+        {
+            args.interfaceName = dev->getName();
+        }
+        else
+        {
+            std::cerr << "Invalid interface." << std::endl;
+            exit(0);
+        }
+    }
+    else
+    {
+        dev = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByName(args.interfaceName);
+        if (dev)
+        {
+            args.interfaceAddress = dev->getIPv4Address();
+        }
+        else
+        {
+            std::cerr << "Invalid interface!" << std::endl;
+            exit(0);
+        }
+    }
 }
