@@ -37,7 +37,8 @@ target_link_directories(${PROJECT_NAME}
         PRIVATE ${PCAPPP_LIB_PATH}/src
         PRIVATE ${PROJECT_SOURCE_DIR}/build/external/PcapPlusPlus/lib
         PRIVATE ${PROJECT_SOURCE_DIR}/build/external/PcapPlusPlus/3rdParty/LightPcapNg
-        PRIVATE ${PROJECT_SOURCE_DIR}/external/argparse)
+        PRIVATE ${PROJECT_SOURCE_DIR}/external/argparse
+        PRIVATE ${PROJECT_SOURCE_DIR}/src)
 
 target_link_libraries(${PROJECT_NAME} CommonPP PacketPP PcapPP light_pcapng)
 

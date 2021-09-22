@@ -1,12 +1,14 @@
 #include <iostream>
-#include "IPv4Layer.h"
-#include "Packet.h"
-#include "PcapFileDevice.h"
 #include "argparse.hpp"
+
+#include "Program.h"
 
 int main(int argc, char* argv[])
 {
-    argparse::ArgumentParser parser("deserter");
+
+    Program program("deserter", argc, argv);
+
+    std::cout << program.GetArgs().targetIP.toString() << std::endl;
 
     return 0;
 }
