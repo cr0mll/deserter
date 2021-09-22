@@ -1,0 +1,24 @@
+cmake_minimum_required (VERSION 3.18.4)
+project (hash_library)
+
+set(ENDIAN_PORTABLE_PATH "${PROJECT_SOURCE_DIR}/../EndianPortable/include")
+
+file(GLOB sources
+        "./*.h"
+        "./*.hpp"
+        "./*.cpp"
+        "./*.c"
+)
+
+add_library(hash_library
+	${sources}
+)
+
+target_compile_definitions(hash_library
+	PUBLIC -DUNIVERSAL
+)
+
+target_include_directories(hash_library PUBLIC
+	${PROJECT_SOURCE_DIR}
+    ${ENDIAN_PORTABLE_PATH}
+)
