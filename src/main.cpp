@@ -7,8 +7,7 @@ int main(int argc, char* argv[])
 {
 
     Program program("deserter", argc, argv);
-
-    std::cout << program.GetArgs().interfaceAddress.toString() << std::endl;
+    program.Run();
 
     return 0;
 }

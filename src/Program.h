@@ -21,16 +21,19 @@ class Program
 {
 public:
     Program(const std::string& name, int argc, char* argv[]);
-    const Arguments& GetArgs() const {return args;}
+    void Run();
+
+    static const Arguments& GetArgs() {return args;}
 
 private:
     void ParseArguments(int argc, char* argv[]);
     void InitCaptureInterface();
+    static bool OnPacketCapture(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev, void* cookie);
 
 private:
     const std::string name;
     argparse::ArgumentParser parser;
-    Arguments args;
+    static Arguments args;
 
     pcpp::PcapLiveDevice* dev;
 };
