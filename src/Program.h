@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <condition_variable>
 
 #include <IpAddress.h>
 #include <PcapLiveDeviceList.h>
@@ -30,7 +31,7 @@ public:
 private:
     void ParseArguments(int argc, char* argv[]);
     void InitCaptureInterface();
-    static bool OnPacketCapture(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev, void* cookie);
+    static void OnPacketCapture(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev, void* cookie);
 
 private:
     const std::string name;
@@ -38,5 +39,9 @@ private:
     static Arguments args;
 
     pcpp::PcapLiveDevice* dev;
+    static bool isCapturing;
+
+    std::mutex mtx;
+    static std::condition_variable capturingEnded;
 };
 

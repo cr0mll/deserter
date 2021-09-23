@@ -1,4 +1,6 @@
 #include <iostream>
+#include <condition_variable>
+
 #include "argparse.hpp"
 
 #include "Program.h"

