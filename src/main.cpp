@@ -2,6 +2,7 @@
 #include "argparse.hpp"
 
 #include "Program.h"
+#include "Screen.h"
 
 int main(int argc, char* argv[])
 {

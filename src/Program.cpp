@@ -8,6 +8,8 @@
 #include <chrono>
 #include <thread>
 
+#include "Screen.h"
+
 Arguments Program::args {};
 
 Program::Program(const std::string& name, int argc, char* argv[])

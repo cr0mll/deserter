@@ -57,5 +57,6 @@ Note, the tool requires sudo permissions to be run.
 - fix a random segmentation fault that sometimes occurs (will probaby go away with proper packet filtering)
 - use asynchronous packet capturing
 - option to specify a particular domain for poisoning (right now, deserter will attempt to poison any domain it sees from the target)
+- colours and banner
 
 *This tool is not intended for use against machines without their owner's written permission. I do not bear any responsibility for your own actions.*

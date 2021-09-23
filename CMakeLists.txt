@@ -17,10 +17,10 @@ include_directories(
         /src
 )
 file(GLOB sources
-        "./include/*.h"
-        "./include/*.hpp"
-        "./src/*.cpp"
-        "./src/*.c"
+        "${PROJECT_SOURCE_DIR}/src/*.h"
+        "${PROJECT_SOURCE_DIR}/src/*.hpp"
+        "${PROJECT_SOURCE_DIR}/src/*.cpp"
+        "${PROJECT_SOURCE_DIR}/src/*.c"
 )
 
 add_executable(${PROJECT_NAME} ${sources})
