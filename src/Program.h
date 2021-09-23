@@ -14,7 +14,9 @@ struct Arguments
     pcpp::IPv4Address hostAddress; // IP Address to poison the cache with
     
     pcpp::IPv4Address interfaceAddress; // IP Address of the interface
-    std::string interfaceName;
+    std::string interfaceName; // Name of the interface
+
+    uint32_t poisonTtl;
 };
 
 class Program
