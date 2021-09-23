@@ -29,6 +29,7 @@ public:
     static const Arguments& GetArgs() {return args;}
 
 private:
+    void PrintBanner();
     void ParseArguments(int argc, char* argv[]);
     void InitCaptureInterface();
     static void OnPacketCapture(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev, void* cookie);

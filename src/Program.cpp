@@ -26,6 +26,7 @@ Program::Program(const std::string& name, int argc, char* argv[])
 
 void Program::Run()
 {
+    PrintBanner();
     std::cout << "Waiting for DNS packets to come..." << std::endl;
     if(dev->startCapture(Program::OnPacketCapture, nullptr))
     {
@@ -103,6 +104,16 @@ void Program::OnPacketCapture(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev
     isCapturing = false;
     capturingEnded.notify_all();
     return;
+}
+
+void Program::PrintBanner()
+{
+    std::cout << "    ____                      __           " << std::endl;
+    std::cout << "   / __ \\___  ________  _____/ /____  _____" << std::endl;
+    std::cout << "  / / / / _ \\/ ___/ _ \\/ ___/ __/ _ \\/ ___/" << std::endl;
+    std::cout << " / /_/ /  __(__  )  __/ /  / /_/  __/ /    " << std::endl;
+    std::cout << "/_____/\\___/____/\\___/_/   \\__/\\___/_/     " << std::endl;
+    std::cout << "                                           " << std::endl;
 }
 
 void Program::ParseArguments(int argc, char* argv[])
