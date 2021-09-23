@@ -21,6 +21,7 @@ Program::Program(const std::string& name, int argc, char* argv[])
 
 void Program::Run()
 {
+    std::cout << "Waiting for DNS packets to come..." << std::endl;
     dev->startCaptureBlockingMode(Program::OnPacketCapture, nullptr, 60);
 }
 

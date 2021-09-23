@@ -15,7 +15,9 @@ cp ../install/lists/Pcap++.txt ../external/PcapPlusPlus/Pcap++/CMakeLists.txt
 cp ../install/lists/PcapPlusPlus.txt ../external/PcapPlusPlus/CMakeLists.txt
 
 # Copy the cmake modules
+mkdir ../external/PcapPlusPlus/cmake
 mkdir ../external/PcapPlusPlus/cmake/Modules
+
 cp ../install/modules/DetectCompiler.cmake ../external/PcapPlusPlus/cmake/Modules
 cp ../install/modules/DetectOS.cmake ../external/PcapPlusPlus/cmake/Modules
 cp ../install/modules/FindDPDK.cmake ../external/PcapPlusPlus/cmake/Modules
