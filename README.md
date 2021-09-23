@@ -56,3 +56,5 @@ Note, the tool requires sudo permissions to be run.
 - implement proper packet filtering
 - fix a random segmentation fault that sometimes occurs (will probaby go away with proper packet filtering)
 - use asynchronous packet capturing
+- custom ttl for poisoned responses
+- option to specify a particular domain for poisoning (right now, deserter will attempt to poison any domain it sees from the target)
