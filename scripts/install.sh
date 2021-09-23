@@ -18,12 +18,12 @@ cp ../install/lists/PcapPlusPlus.txt ../external/PcapPlusPlus/CMakeLists.txt
 mkdir ../external/PcapPlusPlus/cmake
 mkdir ../external/PcapPlusPlus/cmake/Modules
 
-cp ../install/modules/DetectCompiler.cmake ../external/PcapPlusPlus/cmake/Modules
-cp ../install/modules/DetectOS.cmake ../external/PcapPlusPlus/cmake/Modules
-cp ../install/modules/FindDPDK.cmake ../external/PcapPlusPlus/cmake/Modules
-cp ../install/modules/FindNUMA.cmake ../external/PcapPlusPlus/cmake/Modules
-cp ../install/modules/FindPCAP.cmake ../external/PcapPlusPlus/cmake/Modules
-cp ../install/modules/FindPF_Ring.cmake ../external/PcapPlusPlus/cmake/Modules
+cp ../install/modules/DetectCompiler ../external/PcapPlusPlus/cmake/Modules/DetectCompiler.cmake
+cp ../install/modules/DetectOS ../external/PcapPlusPlus/cmake/Modules/DetectOS.cmake
+cp ../install/modules/FindDPDK ../external/PcapPlusPlus/cmake/Modules/FindDPDK.cmake
+cp ../install/modules/FindNUMA ../external/PcapPlusPlus/cmake/Modules/FindNUMA.cmake
+cp ../install/modules/FindPCAP ../external/PcapPlusPlus/cmake/Modules/FindPCAP.cmake
+cp ../install/modules/FindPF_Ring ../external/PcapPlusPlus/cmake/Modules/FindPF_Ring.cmake
 
 ./clean.sh
 ./configure.sh
