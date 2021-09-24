@@ -17,7 +17,9 @@ struct Arguments
     pcpp::IPv4Address interfaceAddress; // IP Address of the interface
     std::string interfaceName; // Name of the interface
 
-    uint32_t poisonTtl;
+    uint32_t poisonTtl; // time-to-live for the poisoned responses
+    bool specificDomains = false;
+    std::vector<std::string> domains; // domains to poison
 };
 
 class Program

@@ -53,7 +53,6 @@ Note, the tool requires sudo permissions to be run.
 
 ## TODOs:
 - add Windows support
-- fix a random segmentation fault that sometimes occurs (will probaby go away with proper packet filtering)
 - option to specify a particular domain for poisoning (right now, deserter will attempt to poison any domain it sees from the target)
 - colours and banner
 
