@@ -53,7 +53,8 @@ Note, the tool requires sudo permissions to be run.
 
 ## TODOs:
 - add Windows support
-- option to specify a particular domain for poisoning (right now, deserter will attempt to poison any domain it sees from the target)
 - colours and banner
+- support for poisoning multiple queries in a single request/response
+- option to keep listening for new packets after a successful poisoning
 
 *This tool is not intended for use against machines without their owner's written permission. I do not bear any responsibility for your own actions.*
