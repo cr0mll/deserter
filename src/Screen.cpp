@@ -22,3 +22,14 @@ void Screen::PrintBanner()
     std::cout << "                                           " << std::endl;
 
 }
+
+void Screen::Reset()
+{
+	std::cout << "\033[m" << std::flush;
+}
+
+void Screen::SetColour(Screen::ForegroundColour colour)
+{
+	std::string colourStr = "\033[" + std::to_string(static_cast<uint8_t>(colour)) + "m";
+	std::cout << colourStr << std::flush;
+}

@@ -28,7 +28,10 @@ void Program::Run()
 {
     Screen::PrintBanner();
 
-    std::cout << "Waiting for DNS packets to come..." << std::endl;
+    Screen::SetColour(Screen::ForegroundColour::Green);
+    std::cout << "Waiting for DNS packets to come...\n" << std::flush;
+    Screen::Reset();
+
     if(dev->startCapture(Program::OnPacketCapture, nullptr))
     {
         isCapturing = true;
