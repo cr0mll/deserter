@@ -5,6 +5,8 @@
 
 #include <IpAddress.h>
 #include <PcapLiveDeviceList.h>
+#include <DnsLayer.h>
+
 
 #include <argparse.hpp>
 
@@ -34,6 +36,8 @@ private:
     void ParseArguments(int argc, char* argv[]);
     void InitCaptureInterface();
     static void OnPacketCapture(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev, void* cookie);
+
+    static void PoisonARecord(pcpp::DnsLayer& dnsLayer, pcpp::DnsQuery* const query); // Used for poisoning A records
 
 private:
     const std::string name;

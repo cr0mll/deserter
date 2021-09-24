@@ -23,6 +23,14 @@ file(GLOB sources
         "${PROJECT_SOURCE_DIR}/src/*.c"
 )
 
+add_compile_definitions(${SUPPORT_MULTIPLE_QUERIES})
+
+get_directory_property( DirDefs DIRECTORY ${CMAKE_SOURCE_DIR} COMPILE_DEFINITIONS )
+foreach( d ${DirDefs} )
+    message( STATUS "Found Define: " ${d} )
+endforeach()
+message( STATUS "DirDefs: " ${DirDefs} )
+
 add_executable(${PROJECT_NAME} ${sources})
 
 target_include_directories(${PROJECT_NAME} 

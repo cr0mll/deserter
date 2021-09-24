@@ -1,3 +1,3 @@
 #! /bin/bash
 
-cmake -S .. -B ../build
+cmake -D SUPPORT_MULTIPLE_QUERIES=$1 -S .. -B ../build

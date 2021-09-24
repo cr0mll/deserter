@@ -26,5 +26,5 @@ cp ../install/modules/FindPCAP ../external/PcapPlusPlus/cmake/Modules/FindPCAP.c
 cp ../install/modules/FindPF_Ring ../external/PcapPlusPlus/cmake/Modules/FindPF_Ring.cmake
 
 ./clean.sh
-./configure.sh
+./configure.sh $1 # use SUPPORT_MULTIPLE_QUERIES_IN_A_SINGLE_REQUEST to build with multiple queries per request supported
 ./build.sh
