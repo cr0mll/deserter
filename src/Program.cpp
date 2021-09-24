@@ -55,7 +55,7 @@ void Program::OnPacketCapture(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev
     pcpp::IPv4Layer* ipLayer = parsedPacket.getLayerOfType<pcpp::IPv4Layer>();
     pcpp::DnsLayer* dnsLayer = parsedPacket.getLayerOfType<pcpp::DnsLayer>();
 
-    if(!dnsLayer) // the packet isn't a DNS one
+    if(!dnsLayer || dnsLayer->getFirstQuery()->getDnsType() != pcpp::DnsType::DNS_TYPE_A) // the packet isn't a DNS one or isn't a type A record (temporary fix until support for more record types)
         return;
 
     // Constructing the poisoned response
