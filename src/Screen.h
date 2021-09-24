@@ -9,4 +9,6 @@ public:
 	static void Clear();
 	// Erases the last [count] characters
 	static void EraseCharacters(uint32_t count = 1);
+
+	static void PrintBanner();
 };
