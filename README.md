@@ -136,8 +136,16 @@ The following syntax can be used for a simple DNS cache poisoning attack:
 ```bash
 ./deserter -t <victim IP> -b <bad IP> -i <interface>
 ```
+or
+```bash
+./deserter --target <victim IP> --bad_ip <bad IP> --interface <interface>
+```
 
 ![](images/basic.png)
+
+We have success:
+
+![](images/basic-nc.png)
 
 <!-- ROADMAP -->
 ## Roadmap
