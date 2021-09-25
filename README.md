@@ -86,7 +86,8 @@ In order for the tool to work, the attacker needs to be on the same network as t
 ### Installation
 
 1. Clone the repo with its submodule 
-```bashgit clone --recurse-submodules https://github.com/b4ckslash0/deserter
+```bash
+git clone --recurse-submodules https://github.com/b4ckslash0/deserter
 ```
 
 2. Change into `deserter/scripts`
