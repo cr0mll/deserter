@@ -176,6 +176,11 @@ void Program::OnPacketCapture(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev
     return;
 }
 
+void PoisonDNSLayer(pcpp::DnsLayer& dnsLayer, const pcpp::DnsLayer& originalLayer)
+{
+    dnsLayer.getDnsHeader()->transactionID = originalLayer.getDnsHeader()->transactionID;
+}
+
 void Program::PoisonARecord(pcpp::DnsLayer& dnsLayer, pcpp::DnsQuery* const query)
 {
     pcpp::IPv4DnsResourceData poisonedData(args.hostAddress);
@@ -303,7 +308,7 @@ void Program::InitCaptureInterface()
         Screen::SetColour(Screen::ForegroundColour::Red);
         std::cerr << "Failed to setup capture filters." << std::endl;
         Screen::Reset();
-        
+
         exit(0);
     }
 }

@@ -125,6 +125,19 @@ chmod +x install.sh
 <!-- USAGE EXAMPLES -->
 ## Usage
 
+The tool requires sudo permissions to be run.
+You can run deserter with `--help` to get information about all of the available options. Three of them are required:
+- `-t` - the IPv4 address of the victim
+- `-b` - the IPv4 address to poison resource records with
+- `-i` - the interface to use (IP address or a name)
+
+### Performing a DNS cache poisoning
+The following syntax can be used for a simple DNS cache poisoning attack:
+```bash
+./deserter -t <victim IP> -b <bad IP> -i <interface>
+```
+
+![](images/basic.png)
 
 <!-- ROADMAP -->
 ## Roadmap

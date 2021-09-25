@@ -37,8 +37,8 @@ private:
     void InitCaptureInterface();
     static void OnPacketCapture(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev, void* cookie);
 
+    static void PoisonDNSLayer(pcpp::DnsLayer& dnsLayer, const pcpp::DnsLayer& originalLayer);
     static void PoisonARecord(pcpp::DnsLayer& dnsLayer, pcpp::DnsQuery* const query); // Used for poisoning A records
-
 private:
     const std::string name;
     argparse::ArgumentParser parser;
