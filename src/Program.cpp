@@ -26,10 +26,7 @@ Program::Program(const std::string& name, int argc, char* argv[])
 void Program::Run()
 {
     Screen::PrintBanner();
-
-    Screen::SetColour(Screen::ForegroundColour::Green);
     std::cout << "Waiting for DNS packets to come...\n" << std::flush;
-    Screen::Reset();
 
     if(dev->startCapture(Program::OnPacketCapture, nullptr))
     {
@@ -160,14 +157,20 @@ void Program::OnPacketCapture(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev
 
     if (!dev->sendPacket(&poisonedPacket))
     {
+        Screen::SetColour(Screen::ForegroundColour::Red);
         std::cerr << "Failed to send poisoned packet." << std::endl;
+        Screen::Reset();
+
         isCapturing = false;
         capturingEnded.notify_all();
         return;
 
     }
 
+    Screen::SetColour(Screen::ForegroundColour::Green);
     std::cout << "Poisoned response sent." << std::endl;
+    Screen::Reset();
+
     isCapturing = false;
     capturingEnded.notify_all();
     return;
@@ -241,7 +244,10 @@ void Program::ParseArguments(int argc, char* argv[])
     }
     catch(const std::runtime_error& err)
     {
+        Screen::SetColour(Screen::ForegroundColour::Red);
         std::cerr << err.what() << '\n';
+        Screen::Reset();
+
         std::cout << parser;
         exit(0);
     }
@@ -273,14 +279,19 @@ void Program::InitCaptureInterface()
         }
         else
         {
+            Screen::SetColour(Screen::ForegroundColour::Red);
             std::cerr << "Invalid interface!" << std::endl;
+            Screen::Reset();
+
             exit(0);
         }
     }
 
     if (!dev->open())
     {
+        Screen::SetColour(Screen::ForegroundColour::Red);
         std::cerr << "Failed to open interface." << std::endl;
+        Screen::Reset();
         exit(0);
     }
 
@@ -289,7 +300,10 @@ void Program::InitCaptureInterface()
 
     if(!dev->setFilter(ipFilter))
     {
+        Screen::SetColour(Screen::ForegroundColour::Red);
         std::cerr << "Failed to setup capture filters." << std::endl;
+        Screen::Reset();
+        
         exit(0);
     }
 }
