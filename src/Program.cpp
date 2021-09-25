@@ -46,13 +46,12 @@ void Program::OnPacketCapture(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev
 {
     pcpp::Packet parsedPacket(packet);
 
+    pcpp::DnsLayer* dnsLayer = parsedPacket.getLayerOfType<pcpp::DnsLayer>();
+    if(!dnsLayer) // the packet isn't a DNS one or isn't a type A record (temporary fix until support for more record types)
+        return;
     pcpp::EthLayer* ethLayer = parsedPacket.getLayerOfType<pcpp::EthLayer>();
     pcpp::UdpLayer* udpLayer = parsedPacket.getLayerOfType<pcpp::UdpLayer>(); 
     pcpp::IPv4Layer* ipLayer = parsedPacket.getLayerOfType<pcpp::IPv4Layer>();
-    pcpp::DnsLayer* dnsLayer = parsedPacket.getLayerOfType<pcpp::DnsLayer>();
-
-    if(!dnsLayer) // the packet isn't a DNS one or isn't a type A record (temporary fix until support for more record types)
-        return;
 
     // Constructing the poisoned response
     uint16_t originalID = dnsLayer->getDnsHeader()->transactionID;
