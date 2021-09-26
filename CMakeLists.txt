@@ -24,6 +24,7 @@ file(GLOB sources
 )
 
 add_compile_definitions(${SUPPORT_MULTIPLE_QUERIES})
+add_compile_options("-O3")
 
 get_directory_property( DirDefs DIRECTORY ${CMAKE_SOURCE_DIR} COMPILE_DEFINITIONS )
 foreach( d ${DirDefs} )

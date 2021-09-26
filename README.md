@@ -147,9 +147,16 @@ We have success:
 
 ![](images/basic-nc.png)
 
+### Specifying domains to poison
+It is also possible to specify which domains you want deserter to poison by using the --domains or -d options and then specifying a list of domains separated by commas without spaces:
+```bash
+./deserter -t <victim IP> -b <bad IP> -i <interface> -d domain1,domain2,domain3,...
+```
+
+
 <!-- ROADMAP -->
 ## Roadmap
-
+- Support for AAAA record type and DNS over ipv6 and then submit for the kali repo
 See the [open issues](https://github.com/b4ckslash0/deserter/issues) for a list of proposed features (and known issues).
 
 <!-- CONTRIBUTING -->
