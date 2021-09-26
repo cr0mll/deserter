@@ -22,6 +22,7 @@ struct Arguments
     uint32_t poisonTtl; // time-to-live for the poisoned responses
     bool specificDomains = false;
     std::vector<std::string> domains; // domains to poison
+    bool keepAlive = false;
 };
 
 class Program

