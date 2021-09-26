@@ -72,6 +72,7 @@ void Program::OnPacketCapture(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev
     poisonedDnsLayer.getDnsHeader()->transactionID = originalID;
     poisonedDnsLayer.getDnsHeader()->queryOrResponse = 1;
 
+
 #ifdef SUPPORT_MULTIPLE_QUERIES_IN_A_SINGLE_REQUEST
     for(pcpp::DnsQuery* currentQuery = dnsLayer->getFirstQuery(); currentQuery; currentQuery = dnsLayer->getNextQuery(currentQuery))
     {

@@ -7,7 +7,7 @@
 ***
 ***
 *** To avoid retyping too much info. Do a search and replace for the following:
-*** b4ckslash0, deserter, twitter_handle, email, deserter, The first of its kind <i>targeted</i> DNS cache poisoner. 
+*** b4ckslash0, deserter, twitter_handle, email, deserter, A <i>targeted</i> DNS cache poisoner. 
 *** Template provided by
 Copyright (c) 2018 Othneil Drew
 -->
@@ -31,7 +31,7 @@ Copyright (c) 2018 Othneil Drew
   <h3 align="center">deserter</h3>
 
   <p align="center">
-	The first of its kind <i>targeted</i> DNS cache poisoner.
+	A <i>targeted</i> DNS cache poisoner.
     <br />
     <br />
     <a href="https://github.com/b4ckslash0/deserter/issues">Report Bug</a>
@@ -72,7 +72,7 @@ Copyright (c) 2018 Othneil Drew
 
 <!---[![Product Name Screen Shot][product-screenshot]](https://example.com)-->
 
-`deserter` is the first of its kind *targeted* DNS cache poisoner. It is capable of DNS cache poisoning *without* bruteforcing the target ID and source port - instead, it sniffs out DNS probes and uses the information inside to craft poisoned responses and send them back to the target.
+`deserter` is a *targeted* DNS cache poisoner. It is capable of DNS cache poisoning *without* bruteforcing the target ID and source port - instead, it sniffs out DNS probes and uses the information inside to craft poisoned responses and send them back to the target.
 
 <!-- GETTING STARTED -->
 ## Getting Started
