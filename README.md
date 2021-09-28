@@ -143,7 +143,7 @@ or
 
 ![](images/basic.png)
 
-We have success:
+We are successful:
 
 ![](images/basic-nc.png)
 
@@ -153,11 +153,23 @@ It is also possible to specify which domains you want deserter to poison by usin
 ./deserter -t <victim IP> -b <bad IP> -i <interface> -d domain1,domain2,domain3,...
 ```
 
+![](images/domains-poison.png)
+
+### Poisoning AAAA records
+deserter is capable of poisoning AAAA records, as well. You will need to specify the `--bad-ipv6` option followed by the IPv6 address you want to poison the cache with:
+
+![](images/ipv6-poison.png)
+
+### Continuous packet capture
+By default, deserter ends its execution after poisoning a single probe. You can tell it to continue waiting for packets and poisoning them by specifying the `--keep-alive` command-line argument:
+
+![](images/keep-alive-poison.png)
+
 
 <!-- ROADMAP -->
 ## Roadmap
-- Support for AAAA record type and DNS over ipv6 and then submit for the kali repo
-See the [open issues](https://github.com/b4ckslash0/deserter/issues) for a list of proposed features (and known issues).
+- Support for DNS over IPv6
+- See the [open issues](https://github.com/b4ckslash0/deserter/issues) for a list of proposed features (and known issues).
 
 <!-- CONTRIBUTING -->
 ## Contributing
