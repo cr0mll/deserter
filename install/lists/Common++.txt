@@ -3,7 +3,6 @@ cmake_minimum_required(VERSION 3.18.4)
 include(DetectOS)
 
 set(ENDIAN_PORTABLE_PATH "${PROJECT_SOURCE_DIR}/3rdParty/EndianPortable/include")
-message(STATUS "epp: ${ENDIAN_PORTABLE_PATH}")
 
 file(GLOB sources
         "./header/*.h"
@@ -28,7 +27,6 @@ target_include_directories(CommonPP
 	# i'll maintain the existing behavior
 	PUBLIC /usr/include/netinet
 )
-message(STATUS "inc dir: ${PCAP_INCLUDE_DIR}")
 
 target_link_libraries(CommonPP PUBLIC
 

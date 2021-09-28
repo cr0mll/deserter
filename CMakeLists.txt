@@ -26,12 +26,6 @@ file(GLOB sources
 add_compile_definitions(${SUPPORT_MULTIPLE_QUERIES})
 add_compile_options("-O3")
 
-get_directory_property( DirDefs DIRECTORY ${CMAKE_SOURCE_DIR} COMPILE_DEFINITIONS )
-foreach( d ${DirDefs} )
-    message( STATUS "Found Define: " ${d} )
-endforeach()
-message( STATUS "DirDefs: " ${DirDefs} )
-
 add_executable(${PROJECT_NAME} ${sources})
 
 target_include_directories(${PROJECT_NAME} 
@@ -51,4 +45,3 @@ target_link_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME} CommonPP PacketPP PcapPP light_pcapng)
 
-message(STATUS "libs: ${LINK_LIBRARIES}")

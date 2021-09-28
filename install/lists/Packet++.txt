@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 3.18.4)
 
 set(HASH_LIB_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/hash-library/")
 
-message(STATUS "hlib: ${HASH_LIB_INCLUDE_DIR}")
-
 file(GLOB sources
         "./header/*.h"
         "./header/*.hpp"
