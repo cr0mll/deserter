@@ -6,8 +6,7 @@
 ***
 ***
 ***
-*** To avoid retyping too much info. Do a search and replace for the following:
-*** b4ckslash0, deserter, twitter_handle, email, deserter, A <i>targeted</i> DNS cache poisoner. 
+*** To avoid retyping too much info. Do a search and replace for the following: 
 *** Template provided by
 Copyright (c) 2018 Othneil Drew
 -->
@@ -48,6 +47,9 @@ Copyright (c) 2018 Othneil Drew
   <ol>
     <li>
       <a href="#about-the-project">About The Project</a>
+	    <ul>
+		    <li><a href=#highlights>Highlights</a></li>
+	    </ul>
     </li>
     <li>
       <a href="#getting-started">Getting Started</a>
@@ -73,6 +75,11 @@ Copyright (c) 2018 Othneil Drew
 <!---[![Product Name Screen Shot][product-screenshot]](https://example.com)-->
 
 `deserter` is a *targeted* DNS cache poisoner. It is capable of DNS cache poisoning *without* bruteforcing the target ID and source port - instead, it sniffs out DNS probes and uses the information inside to craft poisoned responses and send them back to the target.
+
+### Highlights
+- Silence - deserter doesn't flood the network with any type of packet - it only ever sends a single response per query received
+- Speed - written in C++, the tool is fast which is required when racing against packets coming from the legitimate name server
+- Robustness - deserter supports both A and AAAA record types. Support for authority poisoning and DNS over IPv6 is also coming!
 
 <!-- GETTING STARTED -->
 ## Getting Started
