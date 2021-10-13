@@ -33,9 +33,9 @@ Copyright (c) 2018 Othneil Drew
 	A <i>targeted</i> DNS cache poisoner.
     <br />
     <br />
-    <a href="https://github.com/b4ckslash0/deserter/issues">Report Bug</a>
+    <a href="https://github.com/cr0mll/deserter/issues">Report Bug</a>
     ·
-    <a href="https://github.com/b4ckslash0/deserter/issues">Request Feature</a>
+    <a href="https://github.com/cr0mll/deserter/issues">Request Feature</a>
   </p>
 </p>
 
@@ -94,7 +94,7 @@ In order for the tool to work, the attacker needs to be on the same network as t
 
 1. Clone the repo with its submodule 
 ```bash
-git clone --recurse-submodules https://github.com/b4ckslash0/deserter
+git clone --recurse-submodules https://github.com/cr0mll/deserter
 ```
 
 2. Change into `deserter/scripts`
@@ -113,7 +113,7 @@ chmod +x install.sh
 ### Installation with support for multiple queries in a single request
 1. Clone the repo with its submodule 
 ```bash
-git clone --recurse-submodules https://github.com/b4ckslash0/deserter
+git clone --recurse-submodules https://github.com/cr0mll/deserter
 ```
 
 2. Change into `deserter/scripts`
@@ -176,7 +176,7 @@ By default, deserter ends its execution after poisoning a single probe. You can 
 <!-- ROADMAP -->
 ## Roadmap
 - Support for DNS over IPv6
-- See the [open issues](https://github.com/b4ckslash0/deserter/issues) for a list of proposed features (and known issues).
+- See the [open issues](https://github.com/cr0mll/deserter/issues) for a list of proposed features (and known issues).
 
 <!-- CONTRIBUTING -->
 ## Contributing
@@ -201,7 +201,7 @@ Distributed under the MIT License. See `LICENSE` for more information.
 <!-- CONTACT -->
 ## Contact
 
-Project Link: [https://github.com/b4ckslash0/deserter](https://github.com/b4ckslash0/deserter)
+Project Link: [https://github.com/cr0mll/deserter](https://github.com/cr0mll/deserter)
 
 
 
@@ -211,12 +211,12 @@ Project Link: [https://github.com/b4ckslash0/deserter](https://github.com/b4cksl
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
 [contributors-shield]: https://img.shields.io/github/contributors/b4ckslash0/deserter.svg?style=for-the-badge
-[contributors-url]: https://github.com/b4ckslash0/deserter/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/b4ckslash0/deserter.svg?style=for-the-badge
-[forks-url]: https://github.com/b4ckslash0/deserter/network/members
-[stars-shield]: https://img.shields.io/github/stars/b4ckslash0/deserter.svg?style=for-the-badge
-[stars-url]: https://github.com/b4ckslash0/deserter/stargazers
-[issues-shield]: https://img.shields.io/github/issues/b4ckslash0/deserter.svg?style=for-the-badge
-[issues-url]: https://github.com/b4ckslash0/deserter/issues
-[license-shield]: https://img.shields.io/github/license/b4ckslash0/deserter.svg?style=for-the-badge
-[license-url]: https://github.com/b4ckslash0/deserter/blob/master/LICENSE.txt
+[contributors-url]: https://github.com/cr0mll/deserter/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/cr0mll/deserter.svg?style=for-the-badge
+[forks-url]: https://github.com/cr0mll/deserter/network/members
+[stars-shield]: https://img.shields.io/github/stars/cr0mll/deserter.svg?style=for-the-badge
+[stars-url]: https://github.com/cr0mll/deserter/stargazers
+[issues-shield]: https://img.shields.io/github/issues/cr0mll/deserter.svg?style=for-the-badge
+[issues-url]: https://github.com/cr0mll/deserter/issues
+[license-shield]: https://img.shields.io/github/license/cr0mll/deserter.svg?style=for-the-badge
+[license-url]: https://github.com/cr0mll/deserter/blob/master/LICENSE.txt
