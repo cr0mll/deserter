@@ -97,12 +97,17 @@ In order for the tool to work, the attacker needs to be on the same network as t
 git clone --recurse-submodules https://github.com/cr0mll/deserter
 ```
 
-2. Change into `deserter/scripts`
+2. Install libpcap
+```bash
+sudo apt-get install libpcap-dev
+```
+
+3. Change into `deserter/scripts`
 ```bash
 cd deserter/scripts
 ```
 
-3. Change the permissions for the installation script and run it
+4. Change the permissions for the installation script and run it
 ```bash
 chmod +x install.sh
 ```
