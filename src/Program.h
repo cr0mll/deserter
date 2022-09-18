@@ -7,25 +7,27 @@
 #include <PcapLiveDeviceList.h>
 #include <DnsLayer.h>
 
-
 #include <argparse.hpp>
 
+struct Interface {
+    std::string name;
+    pcpp::PcapLiveDevice* dev = nullptr;
+};
 
 struct Arguments
 {
-    pcpp::IPv4Address targetIP; // IP Address of the victim
-    pcpp::IPv4Address hostAddress; // IP Address to poison the cache with
-    pcpp::IPv6Address hostv6Address;
+    std::vector<pcpp::IPv4Address> targetsV4; // IPv4 targets
+    std::vector<pcpp::IPv6Address> targetsV6;
+    pcpp::IPv4Address evilIPv4; // IP Address to poison the cache with
+    pcpp::IPv6Address evilIPv6;
     
-    pcpp::IPv4Address interfaceAddress; // IP Address of the interface
-    std::string interfaceName; // Name of the interface
+    Interface interface;
 
     uint32_t poisonTtl; // time-to-live for the poisoned responses
+    uint16_t port = 53; // The port to which DNS requests are sent.
 
     bool specificDomains = false;
     std::vector<std::string> domains; // domains to poison
-
-    bool keepAlive = false;
 
     bool poisonIPv6 = false;
 };
