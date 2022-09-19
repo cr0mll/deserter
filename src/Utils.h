@@ -7,7 +7,9 @@ std::vector<std::string> SplitString(const std::string& s, char delimiter)
 
     std::size_t pos = s.find_first_of(delimiter, 0);
     for (std::size_t beg = 0; pos != std::string::npos; beg = pos) {
-        v.emplace_back(s.substr(beg, pos));
+        std::string str = s.substr(beg, pos);
+        if (str.length() != 0)
+            v.push_back(std::move(str));
         pos = s.find_first_of(delimiter, pos);
     }
 
