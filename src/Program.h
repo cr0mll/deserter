@@ -29,11 +29,13 @@ struct Arguments
     Targets targets;
     pcpp::IPv4Address evilIPv4; // IP Address to poison the cache with
     pcpp::IPv6Address evilIPv6;
+    pcpp::MacAddress gatewayMAC;
+    pcpp::IPv4Address gatewayIP;
     
     std::string interface;
 
     uint32_t poisonTtl; // time-to-live for the poisoned responses
-    std::array<uint16_t, 2> ports = { 53, 5353 }; // The port to which DNS requests are sent.
+    std::vector<uint16_t> ports = { 53, 5353 }; // The port to which DNS requests are sent.
 
     bool specificDomains = false;
     std::vector<std::string> domains; // domains to poison
@@ -54,7 +56,7 @@ private:
     void InitCaptureInterface();
     static void OnPacketCapture(pcpp::RawPacket* packet, pcpp::PcapLiveDevice* dev, void* cookie);
 
-    static bool PoisonPacket(const pcpp::Packet& original, pcpp::Packet& poison, bool isIPv4);
+    static bool PoisonDns(const pcpp::DnsLayer& original, pcpp::DnsLayer& poison);
 private:
     const std::string name;
     argparse::ArgumentParser parser;

@@ -1,17 +1,14 @@
 #include <string>
 #include <vector>
 
-std::vector<std::string> SplitString(const std::string& s, char delimiter)
+std::vector<std::string> SplitString(const std::string& str, char delim)
 {
-    std::vector<std::string> v;
-
-    std::size_t pos = s.find_first_of(delimiter, 0);
-    for (std::size_t beg = 0; pos != std::string::npos; beg = pos) {
-        std::string str = s.substr(beg, pos);
-        if (str.length() != 0)
-            v.push_back(std::move(str));
-        pos = s.find_first_of(delimiter, pos);
+    std::vector<std::string> strings;
+    size_t start;
+    size_t end = 0;
+    while ((start = str.find_first_not_of(delim, end)) != std::string::npos) {
+        end = str.find(delim, start);
+        strings.push_back(str.substr(start, end - start));
     }
-
-    return v;
+    return strings;
 }
