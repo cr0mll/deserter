@@ -76,10 +76,12 @@ Copyright (c) 2018 Othneil Drew
 
 `deserter` is a *targeted* DNS cache poisoner. It is capable of DNS cache poisoning *without* bruteforcing the target ID and source port - instead, it sniffs out DNS probes and uses the information inside to craft poisoned responses and send them back to the target.
 
+In the absence of DNS security mechanisms, `deserter` has a near 100% success rate of poisoning the target's cache when the router has to forward the DNS query to an external DNS server (the router doesn't have an entry for the domain in its own cache).
+
 ### Highlights
-- Silence - deserter doesn't flood the network with any type of packet - it only ever sends a single response per query received
-- Speed - written in C++, the tool is fast which is required when racing against packets coming from the legitimate name server
-- Robustness - deserter supports both A and AAAA record types. Support for authority poisoning and DNS over IPv6 is also coming!
+- Silence - `deserter` doesn't flood the network with any type of packet - it only ever sends a single response per query received.
+- Speed - `deserter` is fast which is required when racing against packets coming from the legitimate name server.
+- Robustness & Easy of Use - `deserter` supports DNS/MDNS queries of type A/AAAA as well as DNS over IPv6, all while being extremely simple to use.
 
 <!-- GETTING STARTED -->
 ## Getting Started
@@ -90,9 +92,9 @@ To get a local copy up and running follow these simple steps.
 
 In order for the tool to work, the attacker needs to be on the same network as the victim. Sometimes, *arp spoofing* may also be required - usually on physical connections through Ethernet.
 
-### Installation
+### Building from source
 
-1. Clone the repo with its submodule 
+1. Clone the repo with its submodules 
 ```bash
 git clone --recurse-submodules https://github.com/cr0mll/deserter
 ```
@@ -107,80 +109,46 @@ sudo apt-get install libpcap-dev
 cd deserter/scripts
 ```
 
-4. Change the permissions for the installation script and run it
+4. Change the permissions for the scripts and run it
 ```bash
-chmod +x install.sh
+chmod +x *
 ```
+Run the installation script:
 ```bash
 ./install.sh
 ```
 
-### Installation with support for multiple queries in a single request
-1. Clone the repo with its submodule 
-```bash
-git clone --recurse-submodules https://github.com/cr0mll/deserter
-```
+This will configure and build the binary in the `deserter/build` directory.
 
-2. Change into `deserter/scripts`
-```bash
-cd deserter/scripts
-```
-
-3. Change the permissions for the installation script and run it with the `SUPPORT_MULTIPLE_QUERIES_IN_A_SINGLE_REQUEST` option
-```bash
-chmod +x install.sh
-```
-```bash
-./install.sh SUPPORT_MULTIPLE_QUERIES_IN_A_SINGLE_REQUEST
-```
+You can use the scripts `configure.sh` and `build.sh` to manually configure and build the cmake project.
 
 <!-- USAGE EXAMPLES -->
 ## Usage
 
 The tool requires sudo permissions to be run.
-You can run deserter with `--help` to get information about all of the available options. Three of them are required:
-- `-t` - the IPv4 address of the victim
-- `-b` - the IPv4 address to poison resource records with
-- `-i` - the interface to use (IP address or a name)
+You can run deserter with `--help` to get information about all of the available options. 
+![](images/help.png)
 
 ### Performing a DNS cache poisoning
-The following syntax can be used for a simple DNS cache poisoning attack:
+For any DNS cache poisoning attack, you will need to specify the network interface which `deserter` should use and the IPv4 address which to use for poisoning queries:
 ```bash
-./deserter -t <victim IP> -b <bad IP> -i <interface>
-```
-or
-```bash
-./deserter --target <victim IP> --bad_ip <bad IP> --interface <interface>
+./deserter -b <bad IP> -i <interface>
 ```
 
 ![](images/basic.png)
 
-We are successful:
+#### Specifying targets to poison
+The `-t`/`--targets` options can be used to provide a comma-separated list, without whitespace, of IPv4/IPv6 addresses whose queries to poison. By default, `deserter` will poison all queries it sees. Furthermore, you can prepend `~` to any IP addresses you want to *exclude* from the target list, such that their queries are left unaltered.
 
-![](images/basic-nc.png)
+#### Specifying domains to poison
+The `-d`/`--domains` options can be used to provide comma-separated list, without whitespace, of the domains which to poison when they are found in a query. By default, `deserter` will poison all domains.
 
-### Specifying domains to poison
-It is also possible to specify which domains you want deserter to poison by using the --domains or -d options and then specifying a list of domains separated by commas without spaces:
-```bash
-./deserter -t <victim IP> -b <bad IP> -i <interface> -d domain1,domain2,domain3,...
-```
+![](images/targets.png)
 
-![](images/domains-poison.png)
-
-### Poisoning AAAA records
-deserter is capable of poisoning AAAA records, as well. You will need to specify the `--bad-ipv6` option followed by the IPv6 address you want to poison the cache with:
-
-![](images/ipv6-poison.png)
-
-### Continuous packet capture
-By default, deserter ends its execution after poisoning a single probe. You can tell it to continue waiting for packets and poisoning them by specifying the `--keep-alive` command-line argument:
-
-![](images/keep-alive-poison.png)
-
+![](images/targets-exclude.png)
 
 <!-- ROADMAP -->
 ## Roadmap
-- Support for DNS over IPv6
 - See the [open issues](https://github.com/cr0mll/deserter/issues) for a list of proposed features (and known issues).
 
 <!-- CONTRIBUTING -->
@@ -200,8 +168,6 @@ Contributions are what make the open source community such an amazing place to l
 ## License
 
 Distributed under the MIT License. See `LICENSE` for more information.
-
-
 
 <!-- CONTACT -->
 ## Contact

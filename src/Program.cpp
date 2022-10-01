@@ -278,7 +278,7 @@ void Program::ParseArguments(int argc, char *argv[])
     parser.add_argument("-e", "--bad-ipv6").help("IPv6 Address to inject into the cache. This shold be the address of the server you want to redirect the victim to");
     parser.add_argument("--ttl").default_value<uint32_t>(62).help("The time-to-live of the poisoned DNS record (specified in seconds)").scan<'u', uint32_t>();
     parser.add_argument("-d", "--domains").help("A comma-separated list, without whitespace, of specific domains to poison. By default deserted will poison all domains.");
-    parser.add_argument("-p", "--ports").nargs(argparse::nargs_pattern::any).default_value(std::vector<uint16_t>{53, 5353}).help("The possible destination ports of outbound DNS queries [defualt: 53, 5353]").scan<'i', uint16_t>();
+    parser.add_argument("-p", "--ports").nargs(argparse::nargs_pattern::any).default_value(std::vector<uint16_t>{53, 5353}).help("The possible destination ports of outbound DNS queries").scan<'i', uint16_t>();
 
     std::vector<std::string> errors;
     try
